@@ -67,9 +67,38 @@ flutter test
   `AiPlayerEngine` (tam bir AI turu: çekme, açma/işleme, bitirme denemesi,
   taş atma — hepsi TurnEngine/MeldEngine/FinishEngine üzerinden, AI için
   ayrı bir "arka kapı" olmadan).
-- **Aşama 6+ ⏳** Kullanıcı arayüzü, kayıt/ayarlar sonraki aşamalarda
-  eklenecektir.
+- **Aşama 6 ✅** Kullanıcı arayüzü: ana menü, kurallar ekranı, oyun
+  kurulum ekranı (oyuncu adı, AI zorluğu, ev kuralı profili), tam
+  fonksiyonel oyun masası (`GameTableScreen`: rakip panelleri, ortadaki
+  alan, masaya açılmış perler, iki sıralı ıstaka) ve el sonucu ekranı.
+  Taş taşıma/per açma/masaya işleme/okey değiştirme/taş atma
+  **gerçek sürükle-bırak** (Flutter `Draggable`/`DragTarget`) ile
+  çalışır; per açmak için birden çok taş grubu "hazırlama tepsisinde"
+  toplanıp tek seferde gönderilir. `GameController` (Riverpod
+  `StateNotifier`), tüm hamleleri her zaman
+  `TurnEngine`/`MeldEngine`/`FinishEngine` üzerinden işler ve sıra AI'ya
+  geldiğinde `AiPlayerEngine`'i otomatik olarak (gerçekçi bir "düşünme"
+  gecikmesiyle) sırayla çalıştırır.
+- **Aşama 7+ ⏳** Kayıt sistemi, ayarlar, istatistikler, başarımlar
+  sonraki aşamalarda eklenecektir.
 
 Oyun motoru kararlı biçimde `domain/services` (taş/dağıtım), `domain/rules`
 (tur/hamle doğrulama) ve `domain/ai` (yapay zekâ) katmanlarında, UI'dan
-tamamen bağımsız geliştiriliyor.
+tamamen bağımsız geliştiriliyor; UI yalnızca `features/*/presentation`
+katmanında yaşar.
+
+### Aşama 6 kapsam notları (bilinçli basitleştirmeler)
+
+- **Ses efektleri eklenmedi**: `assets/audio/` klasörleri şu an boş;
+  var olmayan ses dosyalarına referans veren "sahte" bir ses özelliği
+  eklemek yerine, gerçek ses varlıkları sağlandığında eklenmesi daha
+  doğru olacağından bu özellik ertelendi.
+- **Taşlar ve avatarlar görsel varlık (PNG) kullanmaz**: gerçek taş
+  görselleri yerine, tamamen widget kompozisyonuyla (renk/gölge/yuvarlak
+  köşe) çizilen taşlar kullanılır; avatarlar için oyuncunun baş harfini
+  gösteren dairesel bir simge kullanılır. Bu, var olmayan asset
+  dosyalarına referans verip çalışma zamanında sessizce bozulan bir
+  arayüz oluşturmamak için bilinçli bir tercihtir.
+- **Çiftten açılış/bitiş için sürükle-bırak arayüzü henüz yok**: motor
+  (Aşama 4) bunu tam destekler, ancak UI şu an yalnızca seri/grup
+  tabanlı açılış ve normal/okeyle/elden bitişi kolayca destekliyor.

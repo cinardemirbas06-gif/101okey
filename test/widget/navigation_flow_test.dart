@@ -1,0 +1,44 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:okey_101_pro/app/app.dart';
+import 'package:okey_101_pro/core/random/random_provider.dart';
+import 'package:okey_101_pro/features/game/presentation/controllers/game_controller.dart';
+
+void main() {
+  testWidgets(
+    'Ana menü -> kurulum -> oyun masası akışı çalışır',
+    (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            gameControllerProvider.overrideWith(
+              (ref) => GameController(SeededRandomProvider(11)),
+            ),
+          ],
+          child: const OkeyProApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Oyuna Başla'), findsOneWidget);
+      await tester.tap(find.text('Oyuna Başla'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Oyunu Başlat'), findsOneWidget);
+      await tester.tap(find.text('Oyunu Başlat'));
+      await tester.pump();
+
+      // AI turlarının (kolay zorlukta ~400ms/tur) ilerlemesi için zamanı
+      // ilerlet; sahte saat sayesinde gerçek bekleme olmadan çalışır.
+      for (var i = 0; i < 10; i++) {
+        await tester.pump(const Duration(milliseconds: 500));
+      }
+      await tester.pumpAndSettle(const Duration(milliseconds: 500));
+
+      // Oyun masası ekranına ulaşıldığını doğrula (üst çubuktaki el/tur
+      // bilgisi her zaman görünür olmalı).
+      expect(find.textContaining('El 1'), findsOneWidget);
+    },
+    timeout: const Timeout(Duration(seconds: 30)),
+  );
+}
