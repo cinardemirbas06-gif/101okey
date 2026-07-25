@@ -95476,7 +95476,7 @@ c1=J.bf(r.gbN(),r.gje())
 n=c1.gan(c1)==="human"
 m=A.bH(c2,B.fO,t.w).w.a
 l=J.d2(p.gc4(p))?8:B.d.lO(J.bA(p.gc4(p))/2)
-k=B.d.ec(B.d.ec((m.a-32)/(l+1),0,(m.b*0.34-16)/2.15/1.45),26,58)
+k=B.d.ec(B.d.ec((m.a-32)/(l+1),0,(m.b*0.24-16)/2.15/1.45),26,58)
 j=k*1.45
 c1=s.c
 i=A.Q(c1).h("cG<1,j>")
