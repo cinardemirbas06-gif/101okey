@@ -20,6 +20,9 @@ import '../widgets/player_rack.dart';
 import '../widgets/table_center_panel.dart';
 import '../widgets/table_meld_view.dart';
 
+/// Gerçek 101 Okey taşlarının en-boy oranına (48x64) karşılık gelir.
+const double _tileAspectRatio = 64 / 48;
+
 /// Oyun masası ekranı: rakipler, ortadaki alan, masaya açılmış perler,
 /// insan oyuncunun ıstakası ve hamle butonları.
 class GameTableScreen extends ConsumerWidget {
@@ -76,11 +79,12 @@ class GameTableScreen extends ConsumerWidget {
     final tileWidthByAvailableWidth =
         (screenSize.width - 32) / (tileCountForSizing + 1);
     final maxRackHeight = screenSize.height * 0.24;
-    final tileWidthByAvailableHeight = (maxRackHeight - 16) / 2.15 / 1.45;
+    final tileWidthByAvailableHeight =
+        (maxRackHeight - 16) / 2.15 / _tileAspectRatio;
     final tileWidth = tileWidthByAvailableWidth
         .clamp(0.0, tileWidthByAvailableHeight)
         .clamp(26.0, 58.0);
-    final tileHeight = tileWidth * 1.45;
+    final tileHeight = tileWidth * _tileAspectRatio;
 
     final stagedTileIds = session.pendingMeldGroups
         .expand((g) => g)
@@ -199,22 +203,32 @@ class GameTableScreen extends ConsumerWidget {
                               ),
                               Container(
                                 margin: const EdgeInsets.symmetric(
-                                  horizontal: 10,
+                                  horizontal: 8,
                                 ),
                                 constraints: const BoxConstraints(
                                   minHeight: 56,
                                 ),
-                                padding: const EdgeInsets.all(6),
+                                clipBehavior: Clip.antiAlias,
                                 decoration: BoxDecoration(
                                   color: TilePalette.meldAreaBackground,
-                                  borderRadius: BorderRadius.circular(10),
+                                  borderRadius: BorderRadius.circular(8),
                                   border: Border.all(
                                     color: TilePalette.meldAreaGridLine,
                                   ),
                                 ),
-                                child: gameState.tableMelds.isEmpty
-                                    ? null
-                                    : Wrap(
+                                child: Stack(
+                                  children: [
+                                    const Positioned.fill(
+                                      child: _MeldAreaGrid(),
+                                    ),
+                                    const Positioned.fill(
+                                      child: Center(child: _MeldAreaWatermark()),
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.all(8),
+                                      child: gameState.tableMelds.isEmpty
+                                          ? const SizedBox.shrink()
+                                          : Wrap(
                                         spacing: 8,
                                         runSpacing: 8,
                                         alignment: WrapAlignment.center,
@@ -255,6 +269,9 @@ class GameTableScreen extends ConsumerWidget {
                                             ),
                                         ],
                                       ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
@@ -266,9 +283,11 @@ class GameTableScreen extends ConsumerWidget {
                         hasDrawn: gameState.hasDrawnThisTurn,
                         selectedCount: session.selectedTileIds.length,
                         hasPendingGroups: session.pendingMeldGroups.isNotEmpty,
+                        pairsEnabled: rules.pairsEnabled,
                         onStageSelection: controller.stageSelectionAsGroup,
                         onClearGroups: controller.clearPendingGroups,
                         onOpenMelds: controller.humanOpenMelds,
+                        onOpenPairs: controller.humanOpenPairs,
                         onFinishNormal: () =>
                             controller.humanFinish(FinishType.normal),
                         onFinishHand: () =>
@@ -576,9 +595,11 @@ class _ActionRail extends StatelessWidget {
     required this.hasDrawn,
     required this.selectedCount,
     required this.hasPendingGroups,
+    required this.pairsEnabled,
     required this.onStageSelection,
     required this.onClearGroups,
     required this.onOpenMelds,
+    required this.onOpenPairs,
     required this.onFinishNormal,
     required this.onFinishHand,
     required this.onDiscardSelected,
@@ -590,9 +611,11 @@ class _ActionRail extends StatelessWidget {
   final bool hasDrawn;
   final int selectedCount;
   final bool hasPendingGroups;
+  final bool pairsEnabled;
   final VoidCallback onStageSelection;
   final VoidCallback onClearGroups;
   final VoidCallback onOpenMelds;
+  final VoidCallback onOpenPairs;
   final VoidCallback onFinishNormal;
   final VoidCallback onFinishHand;
   final VoidCallback? onDiscardSelected;
@@ -612,9 +635,14 @@ class _ActionRail extends StatelessWidget {
         child: Column(
           children: [
             _RailButton(
-              icon: Icons.grid_view,
-              label: 'Per Olarak\nHazırla',
-              onPressed: selectedCount >= 2 ? onStageSelection : null,
+              icon: Icons.lock_open,
+              label: 'Seri Aç',
+              onPressed: canAct && hasPendingGroups ? onOpenMelds : null,
+            ),
+            _RailButton(
+              icon: Icons.join_full,
+              label: 'Çift Aç',
+              onPressed: canAct && pairsEnabled ? onOpenPairs : null,
             ),
             _RailButton(
               icon: Icons.undo,
@@ -622,9 +650,9 @@ class _ActionRail extends StatelessWidget {
               onPressed: hasPendingGroups ? onClearGroups : null,
             ),
             _RailButton(
-              icon: Icons.lock_open,
-              label: 'Aç',
-              onPressed: canAct && hasPendingGroups ? onOpenMelds : null,
+              icon: Icons.grid_view,
+              label: 'Taşları İşle',
+              onPressed: selectedCount >= 2 ? onStageSelection : null,
             ),
             _RailButton(
               icon: Icons.flag,
@@ -746,6 +774,53 @@ class _RackSortButton extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Masaya açılmış perlerin arka planına çizilen çok soluk (blueprint
+/// tarzı) izgara dokusu. Salt dekoratiftir, hiçbir hamleyi etkilemez.
+class _MeldAreaGrid extends StatelessWidget {
+  const _MeldAreaGrid();
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(painter: _MeldAreaGridPainter());
+  }
+}
+
+class _MeldAreaGridPainter extends CustomPainter {
+  static const double _cellSize = 24;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = TilePalette.meldAreaGridLine.withValues(alpha: 0.5)
+      ..strokeWidth = 1;
+    for (var x = 0.0; x <= size.width; x += _cellSize) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    }
+    for (var y = 0.0; y <= size.height; y += _cellSize) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _MeldAreaGridPainter oldDelegate) => false;
+}
+
+/// Masa alanının ortasındaki, çok soluk uygulama filigranı. Gerçek bir
+/// marka/logo varlığı kullanılmaz — yalnızca uygulamanın kendi ikon
+/// motifiyle (bkz. ana menü) tutarlı, özgün bir çizim.
+class _MeldAreaWatermark extends StatelessWidget {
+  const _MeldAreaWatermark();
+
+  @override
+  Widget build(BuildContext context) {
+    return Icon(
+      Icons.grid_view_rounded,
+      size: 72,
+      color: Colors.white.withValues(alpha: 0.04),
     );
   }
 }

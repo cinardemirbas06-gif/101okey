@@ -1,11 +1,44 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:okey_101_pro/core/random/random_provider.dart';
-import 'package:okey_101_pro/features/game/domain/enums/ai_difficulty.dart';
-import 'package:okey_101_pro/features/game/domain/enums/game_phase.dart';
+import 'package:okey_101_pro/features/game/domain/entities/game_rules_config.dart';
+import 'package:okey_101_pro/features/game/domain/entities/game_state.dart';
+import 'package:okey_101_pro/features/game/domain/entities/player.dart';
+import 'package:okey_101_pro/features/game/domain/enums/enums.dart';
 import 'package:okey_101_pro/features/game/presentation/controllers/game_controller.dart';
+import 'package:okey_101_pro/features/game/presentation/controllers/game_session_state.dart';
 
+import '../../helpers/test_state.dart';
 import '../../helpers/test_storage.dart';
+
+/// [GameController] normalde her hamlesini motor katmanı üzerinden
+/// üretir; bu test yalnızca `humanOpenPairs`'ın gerçek bir başlangıç
+/// durumundan çiftleri doğru bulup açtığını doğrulamak istediği için,
+/// `@protected` `state` alanına yalnızca alt sınıf içinden (meşru
+/// biçimde) erişen ince bir test çift (double) tanımlanır.
+class _FakeGameController extends GameController {
+  _FakeGameController(GameState initialGameState)
+      : super(SeededRandomProvider(1)) {
+    state = GameSessionState(gameState: initialGameState);
+  }
+
+  GameSessionState get sessionStateForTest => state;
+}
+
+Player _humanWithFivePairs() => Player(
+  id: kHumanPlayerId,
+  name: 'Test Oyuncusu',
+  avatarId: 'a0',
+  hand: [
+    for (var i = 0; i < 5; i++) ...[
+      normalTile('h${i}a', TileColor.values[i % 4], i + 1),
+      normalTile('h${i}b', TileColor.values[i % 4], i + 1),
+    ],
+  ],
+);
+
+Player _ai(String id) =>
+    Player(id: id, name: id, avatarId: 'a', isAI: true);
 
 void main() {
   group('GameController', () {
@@ -136,5 +169,92 @@ void main() {
       controller.startNextHandOrReturnToMenu();
       expect(container.read(gameControllerProvider).hasActiveGame, isFalse);
     });
+
+    test(
+      'humanOpenPairs: yeterli doğal çift varsa otomatik bulup çiftten '
+      'açılışı gerçekten uygular',
+      () async {
+        final rules = GameRulesConfig.standard.copyWith(requiredPairCount: 5);
+        final initial = buildTestGameState(
+          players: [
+            _humanWithFivePairs(),
+            _ai('ai_0'),
+            _ai('ai_1'),
+            _ai('ai_2'),
+          ],
+          rules: rules,
+        );
+        final controller = _FakeGameController(initial);
+
+        await controller.humanOpenPairs();
+
+        final gameState = controller.sessionStateForTest.gameState!;
+        final human = gameState.players.firstWhere(
+          (p) => p.id == kHumanPlayerId,
+        );
+        expect(human.hasOpened, isTrue);
+        expect(human.hasOpenedWithPairs, isTrue);
+        expect(gameState.tableMelds.length, 5);
+        expect(
+          gameState.tableMelds.every((m) => m.type == MeldType.pair),
+          isTrue,
+        );
+        expect(controller.sessionStateForTest.errorMessage, isNull);
+      },
+    );
+
+    test(
+      'humanOpenPairs: yetersiz çiftte anlaşılır bir hata mesajı üretir, '
+      'state\'i bozmaz',
+      () async {
+        final rules = GameRulesConfig.standard.copyWith(requiredPairCount: 5);
+        final humanWithOnePair = Player(
+          id: kHumanPlayerId,
+          name: 'Test Oyuncusu',
+          avatarId: 'a0',
+          hand: [
+            normalTile('r5_1', TileColor.red, 5),
+            normalTile('r5_2', TileColor.red, 5),
+          ],
+        );
+        final initial = buildTestGameState(
+          players: [humanWithOnePair, _ai('ai_0'), _ai('ai_1'), _ai('ai_2')],
+          rules: rules,
+        );
+        final controller = _FakeGameController(initial);
+
+        await controller.humanOpenPairs();
+
+        expect(controller.sessionStateForTest.errorMessage, isNotNull);
+        final human = controller.sessionStateForTest.gameState!.players.firstWhere(
+          (p) => p.id == kHumanPlayerId,
+        );
+        expect(human.hasOpenedWithPairs, isFalse);
+      },
+    );
+
+    test(
+      'humanOpenPairs: pairsEnabled kapalıyken anlaşılır bir hata üretir',
+      () async {
+        final rules = GameRulesConfig.standard.copyWith(
+          pairsEnabled: false,
+          requiredPairCount: 5,
+        );
+        final initial = buildTestGameState(
+          players: [
+            _humanWithFivePairs(),
+            _ai('ai_0'),
+            _ai('ai_1'),
+            _ai('ai_2'),
+          ],
+          rules: rules,
+        );
+        final controller = _FakeGameController(initial);
+
+        await controller.humanOpenPairs();
+
+        expect(controller.sessionStateForTest.errorMessage, contains('kapalı'));
+      },
+    );
   });
 }

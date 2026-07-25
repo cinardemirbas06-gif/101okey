@@ -148,6 +148,23 @@ geliştirildi; UI yalnızca `features/*/presentation` katmanında yaşar.
   `GameTableScreen` içindeki `tileWidthByAvailableHeight` hesaplaması)
   — böylece geniş bir elde taşlar büyüyüp tepsiyi ekranın geri kalanının
   üzerine taşıramaz.
+- **Gerçek "Çift Aç" akışı eklendi**: `MeldEngine.openMelds` zaten
+  çiftten açılışı destekliyordu (gruplar hep 2'şer taşsa ve
+  `pairsEnabled` açıksa otomatik algılanıyordu) ama UI'da bunun için
+  ayrı, kolay bir giriş noktası yoktu. `GameController.humanOpenPairs()`
+  eklendi: `PairEvaluator` ile eldeki en iyi doğal/jokerli çift
+  eşleşmesini bulur, doğrudan aynı doğrulanmış `MeldEngine.openMelds`
+  yoluyla (gerçek, sahte olmayan) çiftten açılışı dener; yetersiz çift
+  varsa anlaşılır bir hata gösterir. Sağ eylem rayına "Seri Aç" (eski
+  "Aç") ile yan yana gerçek bir "Çift Aç" düğmesi eklendi; "Grupları
+  Temizle" → "Geri Topla", "Per Olarak Hazırla" → "Taşları İşle" olarak
+  yeniden adlandırıldı. 3 yeni birim testle doğrulandı (yeterli çiftle
+  başarılı açılış, yetersiz çiftte anlaşılır hata, `pairsEnabled`
+  kapalıyken anlaşılır hata).
+- **Görsel cila**: taş en-boy oranı gerçek 101 Okey taşlarına (48x64)
+  yaklaştırıldı; masaya açılmış perlerin arka planına çok soluk bir
+  izgara (blueprint) dokusu ve uygulamanın kendi ikon motifiyle (gerçek
+  bir marka/logo varlığı kullanılmadan) özgün bir filigran eklendi.
 
 ### Web build'de bulunan ve düzeltilen hatalar
 

@@ -22,6 +22,7 @@ import '../../domain/enums/game_phase.dart';
 import '../../domain/rules/finish_engine.dart';
 import '../../domain/rules/meld_engine.dart';
 import '../../domain/rules/opening_score_calculator.dart';
+import '../../domain/rules/pair_evaluator.dart';
 import '../../domain/rules/turn_engine.dart';
 import '../../domain/services/game_setup_service.dart';
 import '../../domain/services/scoring_engine.dart';
@@ -180,6 +181,8 @@ class GameController extends StateNotifier<GameSessionState> {
     ),
   );
 
+  /// "Seri Aç": insan oyuncunun manuel olarak hazırladığı per gruplarıyla
+  /// (seri/grup) açılış denemesi.
   Future<void> humanOpenMelds() => _runHumanAction((gs) {
     if (state.pendingMeldGroups.isEmpty) {
       throw const InvalidActionException(
@@ -187,7 +190,34 @@ class GameController extends StateNotifier<GameSessionState> {
       );
     }
     return MeldEngine.openMelds(gs, kHumanPlayerId, state.pendingMeldGroups);
-  }, clearPendingGroups: true, onSuccess: (before, after) {
+  }, clearPendingGroups: true, onSuccess: _captureOpeningScoreIfNewlyOpened);
+
+  /// "Çift Aç": eldeki en iyi çift eşleşmesini (bkz. [PairEvaluator]) otomatik
+  /// bulup doğrudan çiftten açılış dener. Manuel per hazırlama gerektirmez —
+  /// tek dokunuşluk bu kısayol da tamamen aynı, gerçek doğrulanmış
+  /// [MeldEngine.openMelds] yolunu (çift-algılama dalı) kullanır; hiçbir
+  /// "sahte" davranış yoktur.
+  Future<void> humanOpenPairs() => _runHumanAction((gs) {
+    if (!gs.rules.pairsEnabled) {
+      throw const InvalidActionException('Bu masada çiftten açılış kapalı.');
+    }
+    final human = gs.players.firstWhere((p) => p.id == kHumanPlayerId);
+    final result = PairEvaluator.evaluate(
+      human.hand,
+      jokerPolicy: gs.rules.pairJokerPolicy,
+    );
+    if (result.pairs.isEmpty) {
+      throw const InvalidActionException(
+        'Elinizde eşleştirilebilecek çift taş bulunamadı.',
+      );
+    }
+    final groups = [
+      for (final pair in result.pairs) [pair.first.id, pair.second.id],
+    ];
+    return MeldEngine.openMelds(gs, kHumanPlayerId, groups);
+  }, clearPendingGroups: true, onSuccess: _captureOpeningScoreIfNewlyOpened);
+
+  void _captureOpeningScoreIfNewlyOpened(GameState before, GameState after) {
     final wasOpened = before.players
         .firstWhere((p) => p.id == kHumanPlayerId)
         .hasOpened;
@@ -203,7 +233,7 @@ class GameController extends StateNotifier<GameSessionState> {
     if (newOwnMelds.isEmpty) return;
     final score = OpeningScoreCalculator.calculateMeldsScore(newOwnMelds);
     state = state.copyWith(openingScoreThisHand: score);
-  });
+  }
 
   Future<void> humanAddTileToMeld(String tileId, String meldId, int position) =>
       _runHumanAction(
