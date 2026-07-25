@@ -86,180 +86,292 @@ class GameTableScreen extends ConsumerWidget {
         [for (final id in g) if (handById[id] != null) handById[id]!],
     ];
 
+    final rules = gameState.rules;
+    final ruleBadges = [
+      if (rules.pairsEnabled)
+        const _RuleBadge(label: 'Eşli', color: TilePalette.ruleBadgePaired),
+      if (settings.validDropHighlightEnabled)
+        const _RuleBadge(
+          label: 'Yardımlı',
+          color: TilePalette.ruleBadgeAssisted,
+        ),
+      if (rules.scoringRules.okeyFinishMultiplier > 1 ||
+          rules.scoringRules.pairFinishMultiplier > 1 ||
+          rules.scoringRules.handFinishMultiplier > 1)
+        const _RuleBadge(
+          label: 'Katlamalı',
+          color: TilePalette.ruleBadgeMultiplied,
+        ),
+      _RuleBadge(
+        label: gameState.fixedHandCount != null
+            ? 'El ${gameState.handNumber}/${gameState.fixedHandCount}'
+            : 'El ${gameState.handNumber}',
+        color: TilePalette.ruleBadgeHandCounter,
+      ),
+    ];
+
     return GameUiPreferences(
       animationsEnabled: settings.animationsEnabled,
       dropHighlightsEnabled: settings.validDropHighlightEnabled,
-      child: Scaffold(
-      backgroundColor: TilePalette.tableFeltGreen,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _TopBar(
-              handNumber: gameState.handNumber,
-              turnNumber: gameState.turnNumber,
-              lastAction: gameState.lastActionDescription,
-              isAiThinking: session.isAiThinking,
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  for (final opponent in opponents)
-                    OpponentPanel(
-                      opponent: PlayerPublicState(
-                        playerId: opponent.id,
-                        name: opponent.name,
-                        remainingTileCount: opponent.hand.length,
-                        hasOpened: opponent.hasOpened,
-                        hasOpenedWithPairs: opponent.hasOpenedWithPairs,
-                      ),
-                      isActive: gameState.activePlayer.id == opponent.id,
-                    ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: TableCenterPanel(
-                        drawPileCount: gameState.remainingDeckCount,
-                        indicatorTile: gameState.indicatorTile,
-                        okeyTile: gameState.okeyTile,
-                        discardTopTile: gameState.currentDiscardTopTile,
-                        canDrawFromDeck:
-                            isHumanTurn &&
-                            gameState.phase == GamePhase.waitingForDraw,
-                        onDrawFromDeck: controller.humanDrawFromDeck,
-                        onTakeDiscard: () {
-                          if (isHumanTurn &&
-                              gameState.phase == GamePhase.waitingForDraw) {
-                            controller.humanTakeDiscard();
-                          }
-                        },
-                        onDiscardDropped: (tile) {
-                          if (isHumanTurn) controller.humanDiscard(tile.id);
-                        },
-                        tileWidth: tileWidth * 0.75,
-                        tileHeight: tileHeight * 0.75,
-                      ),
-                    ),
-                    if (gameState.tableMelds.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 4,
-                        ),
-                        child: Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          alignment: WrapAlignment.center,
-                          children: [
-                            for (final meld in gameState.tableMelds)
-                              TableMeldView(
-                                meld: meld,
-                                tileWidth: tileWidth * 0.7,
-                                tileHeight: tileHeight * 0.7,
-                                onDropAtStart: (tile) {
-                                  if (isHumanTurn) {
-                                    controller.humanAddTileToMeld(
-                                      tile.id,
-                                      meld.id,
-                                      0,
-                                    );
-                                  }
-                                },
-                                onDropAtEnd: (tile) {
-                                  if (isHumanTurn) {
-                                    controller.humanAddTileToMeld(
-                                      tile.id,
-                                      meld.id,
-                                      meld.tiles.length,
-                                    );
-                                  }
-                                },
-                                onDropOnJokerSlot: (tile, position) {
-                                  if (isHumanTurn) {
-                                    controller.humanSwapTileWithTableOkey(
-                                      tile.id,
-                                      meld.id,
-                                      position,
-                                    );
-                                  }
-                                },
-                              ),
-                          ],
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            _ActionBar(
-              isHumanTurn: isHumanTurn,
-              phase: gameState.phase,
-              hasDrawn: gameState.hasDrawnThisTurn,
-              selectedCount: session.selectedTileIds.length,
-              hasPendingGroups: session.pendingMeldGroups.isNotEmpty,
-              onStageSelection: controller.stageSelectionAsGroup,
-              onClearGroups: controller.clearPendingGroups,
-              onOpenMelds: controller.humanOpenMelds,
-              onFinishNormal: () => controller.humanFinish(FinishType.normal),
-              onFinishHand: () => controller.humanFinish(FinishType.handFinish),
-              onDiscardSelected: session.selectedTileIds.length == 1
-                  ? () => controller.humanDiscard(
-                      session.selectedTileIds.single,
-                    )
-                  : null,
-              onSort: settings.handSortMode == HandSortMode.manual
-                  ? null
-                  : () => controller.humanRearrangeHand(
-                      _sortedHandOrder(human.hand, settings.handSortMode),
-                    ),
-            ),
-            if (stagingGroups.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: MeldStagingTray(
-                  groups: stagingGroups,
-                  tileWidth: tileWidth,
-                  tileHeight: tileHeight,
-                  onDropIntoGroup: (tile, groupIndex) => controller
-                      .addTileToPendingGroup(tile.id, groupIndex: groupIndex),
-                  onDropIntoNewGroup: (tile) =>
-                      controller.addTileToPendingGroup(tile.id),
-                  onRemoveTileFromGroup: controller.removeTileFromPendingGroup,
-                ),
-              ),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: DragTarget<OkeyTile>(
-                onWillAcceptWithDetails: (_) => true,
-                onAcceptWithDetails: (details) =>
-                    controller.addTileToPendingGroup(details.data.id),
-                builder: (context, candidateData, rejectedData) {
-                  return PlayerRack(
-                    hand: visibleRackHand,
-                    selectedTileIds: session.selectedTileIds,
-                    onTileTap: (tile) =>
-                        controller.toggleTileSelection(tile.id),
-                    onReorder: controller.humanRearrangeHand,
-                    tileWidth: tileWidth,
-                    tileHeight: tileHeight,
-                  );
-                },
-              ),
-            ),
-          ],
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [TilePalette.tableNavyDark, TilePalette.tableNavyDarkest],
+          ),
         ),
-      ),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: SafeArea(
+            child: Column(
+              children: [
+                _TopBar(
+                  handNumber: gameState.handNumber,
+                  turnNumber: gameState.turnNumber,
+                  lastAction: gameState.lastActionDescription,
+                  isAiThinking: session.isAiThinking,
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      for (final opponent in opponents)
+                        OpponentPanel(
+                          opponent: PlayerPublicState(
+                            playerId: opponent.id,
+                            name: opponent.name,
+                            remainingTileCount: opponent.hand.length,
+                            hasOpened: opponent.hasOpened,
+                            hasOpenedWithPairs: opponent.hasOpenedWithPairs,
+                          ),
+                          isActive: gameState.activePlayer.id == opponent.id,
+                        ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: ruleBadges,
+                  ),
+                ),
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 8,
+                                ),
+                                child: TableCenterPanel(
+                                  drawPileCount: gameState.remainingDeckCount,
+                                  indicatorTile: gameState.indicatorTile,
+                                  okeyTile: gameState.okeyTile,
+                                  discardTopTile: gameState.currentDiscardTopTile,
+                                  canDrawFromDeck:
+                                      isHumanTurn &&
+                                      gameState.phase == GamePhase.waitingForDraw,
+                                  onDrawFromDeck: controller.humanDrawFromDeck,
+                                  onTakeDiscard: () {
+                                    if (isHumanTurn &&
+                                        gameState.phase ==
+                                            GamePhase.waitingForDraw) {
+                                      controller.humanTakeDiscard();
+                                    }
+                                  },
+                                  onDiscardDropped: (tile) {
+                                    if (isHumanTurn) {
+                                      controller.humanDiscard(tile.id);
+                                    }
+                                  },
+                                  tileWidth: tileWidth * 0.75,
+                                  tileHeight: tileHeight * 0.75,
+                                ),
+                              ),
+                              Container(
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                ),
+                                constraints: const BoxConstraints(
+                                  minHeight: 120,
+                                ),
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: TilePalette.meldAreaBackground,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: TilePalette.meldAreaGridLine,
+                                  ),
+                                ),
+                                child: gameState.tableMelds.isEmpty
+                                    ? null
+                                    : Wrap(
+                                        spacing: 8,
+                                        runSpacing: 8,
+                                        alignment: WrapAlignment.center,
+                                        children: [
+                                          for (final meld in gameState.tableMelds)
+                                            TableMeldView(
+                                              meld: meld,
+                                              tileWidth: tileWidth * 0.7,
+                                              tileHeight: tileHeight * 0.7,
+                                              onDropAtStart: (tile) {
+                                                if (isHumanTurn) {
+                                                  controller.humanAddTileToMeld(
+                                                    tile.id,
+                                                    meld.id,
+                                                    0,
+                                                  );
+                                                }
+                                              },
+                                              onDropAtEnd: (tile) {
+                                                if (isHumanTurn) {
+                                                  controller.humanAddTileToMeld(
+                                                    tile.id,
+                                                    meld.id,
+                                                    meld.tiles.length,
+                                                  );
+                                                }
+                                              },
+                                              onDropOnJokerSlot: (tile, position) {
+                                                if (isHumanTurn) {
+                                                  controller
+                                                      .humanSwapTileWithTableOkey(
+                                                    tile.id,
+                                                    meld.id,
+                                                    position,
+                                                  );
+                                                }
+                                              },
+                                            ),
+                                        ],
+                                      ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      _ActionRail(
+                        isHumanTurn: isHumanTurn,
+                        phase: gameState.phase,
+                        hasDrawn: gameState.hasDrawnThisTurn,
+                        selectedCount: session.selectedTileIds.length,
+                        hasPendingGroups: session.pendingMeldGroups.isNotEmpty,
+                        onStageSelection: controller.stageSelectionAsGroup,
+                        onClearGroups: controller.clearPendingGroups,
+                        onOpenMelds: controller.humanOpenMelds,
+                        onFinishNormal: () =>
+                            controller.humanFinish(FinishType.normal),
+                        onFinishHand: () =>
+                            controller.humanFinish(FinishType.handFinish),
+                        onDiscardSelected: session.selectedTileIds.length == 1
+                            ? () => controller.humanDiscard(
+                                session.selectedTileIds.single,
+                              )
+                            : null,
+                        onSort: settings.handSortMode == HandSortMode.manual
+                            ? null
+                            : () => controller.humanRearrangeHand(
+                                _sortedHandOrder(
+                                  human.hand,
+                                  settings.handSortMode,
+                                ),
+                              ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (stagingGroups.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: MeldStagingTray(
+                      groups: stagingGroups,
+                      tileWidth: tileWidth,
+                      tileHeight: tileHeight,
+                      onDropIntoGroup: (tile, groupIndex) => controller
+                          .addTileToPendingGroup(tile.id, groupIndex: groupIndex),
+                      onDropIntoNewGroup: (tile) =>
+                          controller.addTileToPendingGroup(tile.id),
+                      onRemoveTileFromGroup:
+                          controller.removeTileFromPendingGroup,
+                    ),
+                  ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 8,
+                  ),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [TilePalette.woodLight, TilePalette.woodDark],
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      _RackSortButton(
+                        label: 'Çift Diz',
+                        icon: Icons.filter_2,
+                        onPressed: human.hand.isEmpty
+                            ? null
+                            : () => controller.humanRearrangeHand(
+                                _sortedHandOrder(
+                                  human.hand,
+                                  HandSortMode.byNumber,
+                                ),
+                              ),
+                      ),
+                      Expanded(
+                        child: DragTarget<OkeyTile>(
+                          onWillAcceptWithDetails: (_) => true,
+                          onAcceptWithDetails: (details) => controller
+                              .addTileToPendingGroup(details.data.id),
+                          builder: (context, candidateData, rejectedData) {
+                            return PlayerRack(
+                              hand: visibleRackHand,
+                              selectedTileIds: session.selectedTileIds,
+                              onTileTap: (tile) =>
+                                  controller.toggleTileSelection(tile.id),
+                              onReorder: controller.humanRearrangeHand,
+                              tileWidth: tileWidth,
+                              tileHeight: tileHeight,
+                            );
+                          },
+                        ),
+                      ),
+                      _RackSortButton(
+                        label: 'Seri Diz',
+                        icon: Icons.linear_scale,
+                        onPressed: human.hand.isEmpty
+                            ? null
+                            : () => controller.humanRearrangeHand(
+                                _sortedHandOrder(
+                                  human.hand,
+                                  HandSortMode.byColor,
+                                ),
+                              ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
-
 }
 
 List<String> _sortedHandOrder(List<OkeyTile> hand, HandSortMode mode) {
@@ -296,7 +408,7 @@ class _TopBar extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      color: Colors.black26,
+      color: TilePalette.tableNavyDarkest,
       child: Row(
         children: [
           Text(
@@ -422,8 +534,37 @@ class _TurnCountdownState extends ConsumerState<_TurnCountdown> {
   }
 }
 
-class _ActionBar extends StatelessWidget {
-  const _ActionBar({
+/// Bir kural rozetini (ör. "Eşli", "Katlamalı") gösteren küçük, renkli hap.
+class _RuleBadge extends StatelessWidget {
+  const _RuleBadge({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+/// Oyun masasının sağ kenarındaki dikey hamle düğmeleri rayı.
+class _ActionRail extends StatelessWidget {
+  const _ActionRail({
     required this.isHumanTurn,
     required this.phase,
     required this.hasDrawn,
@@ -455,49 +596,147 @@ class _ActionBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final canAct = isHumanTurn && phase == GamePhase.waitingForMeld && hasDrawn;
 
+    return Container(
+      width: 96,
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      decoration: const BoxDecoration(
+        border: Border(left: BorderSide(color: TilePalette.meldAreaGridLine)),
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            _RailButton(
+              icon: Icons.grid_view,
+              label: 'Per Olarak\nHazırla',
+              onPressed: selectedCount >= 2 ? onStageSelection : null,
+            ),
+            _RailButton(
+              icon: Icons.undo,
+              label: 'Geri Topla',
+              onPressed: hasPendingGroups ? onClearGroups : null,
+            ),
+            _RailButton(
+              icon: Icons.lock_open,
+              label: 'Aç',
+              onPressed: canAct && hasPendingGroups ? onOpenMelds : null,
+            ),
+            _RailButton(
+              icon: Icons.flag,
+              label: 'Bitir',
+              onPressed: canAct ? onFinishNormal : null,
+            ),
+            _RailButton(
+              icon: Icons.bolt,
+              label: 'Elden Bitir',
+              onPressed: canAct && !hasPendingGroups ? onFinishHand : null,
+            ),
+            _RailButton(
+              icon: Icons.arrow_downward,
+              label: 'Seçileni At',
+              onPressed: canAct ? onDiscardSelected : null,
+            ),
+            _RailButton(
+              icon: Icons.sort,
+              label: 'Sırala',
+              onPressed: onSort,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RailButton extends StatelessWidget {
+  const _RailButton({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: Wrap(
-        alignment: WrapAlignment.center,
-        spacing: 8,
-        runSpacing: 4,
-        children: [
-          ElevatedButton.icon(
-            onPressed: selectedCount >= 2 ? onStageSelection : null,
-            icon: const Icon(Icons.grid_view, size: 16),
-            label: const Text('Per Olarak Hazırla'),
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: TilePalette.actionRailButton,
+          disabledBackgroundColor: TilePalette.actionRailButton.withValues(
+            alpha: 0.35,
           ),
-          ElevatedButton.icon(
-            onPressed: hasPendingGroups ? onClearGroups : null,
-            icon: const Icon(Icons.clear, size: 16),
-            label: const Text('Grupları Temizle'),
+          foregroundColor: Colors.white,
+          disabledForegroundColor: Colors.white38,
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
           ),
-          ElevatedButton.icon(
-            onPressed: canAct && hasPendingGroups ? onOpenMelds : null,
-            icon: const Icon(Icons.lock_open, size: 16),
-            label: const Text('Aç'),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 10, height: 1.1),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Istaka tepsisinin köşelerindeki hızlı sıralama düğmeleri ("Çift Diz" /
+/// "Seri Diz"). Sayı önceliğine göre sıralamak çiftleri/grupları, renk
+/// önceliğine göre sıralamak serileri yan yana getirir — bu yüzden
+/// gerçek (sahte olmayan) bir işlevi vardır: bkz. `_sortedHandOrder`.
+class _RackSortButton extends StatelessWidget {
+  const _RackSortButton({
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: SizedBox(
+        width: 56,
+        child: ElevatedButton(
+          onPressed: onPressed,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: TilePalette.tableNavyDarkest,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
-          ElevatedButton.icon(
-            onPressed: canAct ? onFinishNormal : null,
-            icon: const Icon(Icons.flag, size: 16),
-            label: const Text('Bitir'),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 9, height: 1.1),
+              ),
+            ],
           ),
-          ElevatedButton.icon(
-            onPressed: canAct && !hasPendingGroups ? onFinishHand : null,
-            icon: const Icon(Icons.bolt, size: 16),
-            label: const Text('Elden Bitir'),
-          ),
-          ElevatedButton.icon(
-            onPressed: canAct ? onDiscardSelected : null,
-            icon: const Icon(Icons.arrow_downward, size: 16),
-            label: const Text('Seçileni At'),
-          ),
-          OutlinedButton.icon(
-            onPressed: onSort,
-            icon: const Icon(Icons.sort, size: 16),
-            label: const Text('Sırala'),
-          ),
-        ],
+        ),
       ),
     );
   }

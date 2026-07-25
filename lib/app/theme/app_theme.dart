@@ -13,7 +13,7 @@ abstract final class AppTheme {
 
   static ThemeData get light {
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: TilePalette.tableFeltGreen,
+      seedColor: TilePalette.tableNavyMid,
       brightness: Brightness.light,
     );
 

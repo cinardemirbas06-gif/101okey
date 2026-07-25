@@ -123,6 +123,18 @@ Planlanan 8 aşamanın tamamı tamamlandı. Oyun motoru kararlı biçimde
 `domain/ai` (yapay zekâ) katmanlarında, UI'dan tamamen bağımsız
 geliştirildi; UI yalnızca `features/*/presentation` katmanında yaşar.
 
+- **Oyun masası teması yeniden tasarlandı** (Aşama 8 sonrası, popüler bir
+  101 Okey uygulamasından esinlenerek — logo/marka öğeleri kopyalanmadan,
+  yalnızca genel düzen/renk hissi alınarak): koyu lacivert zemin, ahşap
+  dokulu (gradient ile, gerçek görsel varlık kullanılmadan) ıstaka
+  tepsisi, sağ kenarda dikey hamle düğmeleri rayı, ve gerçek kural
+  verisine bağlı bir kural rozetleri şeridi ("Eşli" → `pairsEnabled`,
+  "Yardımlı" → geçerli bırakma alanı vurgusu ayarı, "Katlamalı" →
+  puanlama çarpanları > 1, "El X" → `handNumber`/`fixedHandCount`).
+  Istaka tepsisinin köşelerine, elin sırasını renge veya sayıya göre
+  önceliklendiren gerçek iki hızlı sıralama düğmesi eklendi ("Çift Diz",
+  "Seri Diz").
+
 ### Web build'de bulunan ve düzeltilen hatalar
 
 Otomatik testler (analyze/test) hiçbir zaman gerçek bir tarayıcıda,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/theme/tile_palette.dart';
 import '../../../game/data/game_save_repository.dart';
 import '../../../game/presentation/controllers/game_controller.dart';
 
@@ -33,7 +34,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF0B6E4F), Color(0xFF06301F)],
+            colors: [TilePalette.tableNavyMid, TilePalette.tableNavyDarkest],
           ),
         ),
         child: SafeArea(

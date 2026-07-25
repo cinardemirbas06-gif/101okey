@@ -48,8 +48,11 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
 
       // Oyun masası ekranına ulaşıldığını doğrula (üst çubuktaki el/tur
-      // bilgisi her zaman görünür olmalı).
-      expect(find.textContaining('El 1'), findsOneWidget);
+      // bilgisi her zaman görünür olmalı). "El 1" tek başına artık hem üst
+      // çubukta hem de kural rozetleri şeridindeki el sayacı rozetinde
+      // eşleştiği için tur bilgisini de içeren daha spesifik bir metin
+      // aranır.
+      expect(find.textContaining('El 1 · Tur'), findsOneWidget);
     },
     timeout: const Timeout(Duration(seconds: 30)),
   );
