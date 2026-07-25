@@ -1,0 +1,87 @@
+name: okey_101_pro
+description: "101 Okey Pro - Profesyonel, tamamen offline oynanabilir 101 Okey oyunu."
+publish_to: 'none'
+
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # State management
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # Routing
+  go_router: ^14.6.2
+
+  # Immutable models / code generation
+  freezed_annotation: ^2.4.4
+  json_annotation: ^4.9.0
+
+  # Persistence
+  shared_preferences: ^2.3.3
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+
+  # Audio & haptics
+  audioplayers: ^6.1.0
+  vibration: ^2.0.1
+
+  # Utilities
+  collection: ^1.19.0
+  uuid: ^4.5.1
+  equatable: ^2.0.7
+  logging: ^1.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+
+  # Code generation
+  build_runner: ^2.4.13
+  freezed: ^2.5.7
+  json_serializable: ^6.9.0
+  riverpod_generator: ^2.6.3
+
+  # Testing
+  mocktail: ^1.0.4
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/tiles/
+    - assets/images/avatars/
+    - assets/images/backgrounds/
+    - assets/audio/sfx/
+    - assets/audio/music/
+    - assets/lang/
+
+  # Roboto burada gerçek bir varlık olarak paketlenir; aksi halde Flutter
+  # Web, varsayılan "Roboto" yazı tipini çalışma zamanında internetten
+  # (fonts.gstatic.com) indirmeye çalışır ve bu, "tamamen offline
+  # oynanabilir" gereksinimini bozar (bkz. assets/fonts/Roboto/NOTICE.md).
+  fonts:
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Roboto/Roboto-Thin.ttf
+          weight: 100
+        - asset: assets/fonts/Roboto/Roboto-Light.ttf
+          weight: 300
+        - asset: assets/fonts/Roboto/Roboto-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Roboto/Roboto-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Roboto/Roboto-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Roboto/Roboto-Black.ttf
+          weight: 900
