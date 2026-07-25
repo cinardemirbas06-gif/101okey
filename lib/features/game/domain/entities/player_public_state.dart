@@ -1,7 +1,5 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import 'meld.dart';
-
 part 'player_public_state.freezed.dart';
 part 'player_public_state.g.dart';
 
@@ -18,7 +16,6 @@ class PlayerPublicState with _$PlayerPublicState {
     required int remainingTileCount,
     required bool hasOpened,
     required bool hasOpenedWithPairs,
-    required List<Meld> ownMelds,
 
     /// Bu oyuncunun bu el içinde çektiği/aldığı ve attığı taşların
     /// geçmişi; AI'ın rakip takibi yapabilmesi için gereklidir.

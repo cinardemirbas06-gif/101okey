@@ -2,7 +2,6 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 import '../enums/ai_difficulty.dart';
 import '../enums/ai_personality.dart';
-import 'meld.dart';
 import 'okey_tile.dart';
 
 part 'player.freezed.dart';
@@ -26,9 +25,10 @@ class Player with _$Player {
     AiPersonality? aiPersonality,
     @Default(<OkeyTile>[]) List<OkeyTile> hand,
 
-    /// Bu oyuncunun kendi açılışında ortaya koyduğu perler (henüz masaya
-    /// "herkese açık" hale gelmemiş, ama açılış toplamına sayılan perler).
-    @Default(<Meld>[]) List<Meld> ownMelds,
+    /// Oyuncu 101 (veya yapılandırılan eşik) açılışını tamamladı mı.
+    /// Açılan perler `GameState.tableMelds` içinde `openedByPlayerId` ile
+    /// bu oyuncuya bağlanır; oyuncu üzerinde ayrıca bir kopya tutulmaz
+    /// (tek merkezi state ilkesi).
     @Default(false) bool hasOpened,
     @Default(false) bool hasOpenedWithPairs,
 

@@ -56,6 +56,20 @@ final class InsufficientOpeningScoreException extends GameException {
   final int requiredScore;
 }
 
+/// Çiftten açılış denemesinde gerekli çift sayısına ulaşılamadı.
+final class InsufficientPairCountException extends GameException {
+  const InsufficientPairCountException({
+    required this.currentPairCount,
+    required this.requiredPairCount,
+  }) : super(
+          'Şu an $currentPairCount çift var. Çiftten açmak için '
+          '$requiredPairCount çift gerekiyor.',
+        );
+
+  final int currentPairCount;
+  final int requiredPairCount;
+}
+
 /// Aynı fiziksel taş iki farklı perde kullanılmaya çalışıldı.
 final class TileAlreadyUsedException extends GameException {
   const TileAlreadyUsedException({String? debugDetail})

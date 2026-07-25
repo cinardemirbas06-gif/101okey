@@ -48,9 +48,13 @@ flutter test
   belirleme, kurallara uygun dağıtım (`GameSetupService`) ve tur akışı
   motoru (`TurnEngine`: taş çekme, ortadan alma, taş atma, ıstaka
   yeniden sıralama, deste tükenme politikaları).
-- **Aşama 4+ ⏳** Per doğrulama (seri/grup/okeyli per, 101 açılış, çift
-  açma), masaya taş işleme, yapay zekâ, kullanıcı arayüzü, kayıt/ayarlar
-  sonraki aşamalarda eklenecektir.
+- **Aşama 4 ✅** Per doğrulama (`MeldValidator`: seri, grup, okeyli per
+  çözümleme, 12-13-1 sarma seçeneği), çift açma değerlendirmesi
+  (`PairEvaluator`), 101 açılış puan hesabı (`OpeningScoreCalculator`) ve
+  bunları birleştiren `MeldEngine` (per açma, masaya taş işleme, okey
+  değiştirme).
+- **Aşama 5+ ⏳** Bitirme/puanlama motoru, yapay zekâ, kullanıcı arayüzü,
+  kayıt/ayarlar sonraki aşamalarda eklenecektir.
 
 Oyun motoru kararlı biçimde `domain/services` (taş/dağıtım) ve
 `domain/rules` (tur/hamle doğrulama) katmanlarında, UI'dan tamamen
