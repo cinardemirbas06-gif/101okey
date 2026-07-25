@@ -1,0 +1,37 @@
+name: Web build'i GitHub Pages'e yayınla
+
+on:
+  push:
+    branches:
+      - claude/101-okey-pro-flutter-e068zp
+      - main
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.8'
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Generate freezed/json_serializable code
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Build web (release)
+        run: flutter build web --release --no-tree-shake-icons --base-href /101okey/
+
+      - name: Deploy to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build/web
