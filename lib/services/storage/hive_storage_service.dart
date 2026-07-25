@@ -1,14 +1,18 @@
-import 'package:hive/hive.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../core/constants/storage_keys.dart';
 
 /// Uygulamanın kalıcı depolama (Hive) altyapısını başlatan ve kutulara
 /// (box) erişim sağlayan merkezi servis.
 ///
-/// Üretimde [init] platform belgeler dizinini kullanır; testlerde
-/// [overridePath] ile geçici bir dizin verilerek platform kanalları
-/// (path_provider) hiç çağrılmadan çalıştırılabilir.
+/// Üretimde [init], `Hive.initFlutter()` ile platforma uygun depolamayı
+/// otomatik seçer (mobil/masaüstünde belgeler dizini, Web'de IndexedDB).
+/// **Bilinçli tercih:** doğrudan `path_provider` kullanılmaz — o paket
+/// Web'de bir uygulama sağlamaz ve çağrıldığında uygulamanın web
+/// derlemesinin ilk kareyi hiç çizemeden (tamamen boş bir sayfa olarak)
+/// çökmesine yol açar; bu proje offline masaüstü/mobil kadar offline
+/// web'i de desteklemek zorundadır. Testlerde [overridePath] ile geçici
+/// bir dizin verilerek platform kanalları hiç çağrılmadan çalıştırılabilir.
 abstract final class HiveStorageService {
   const HiveStorageService._();
 
@@ -16,8 +20,11 @@ abstract final class HiveStorageService {
 
   static Future<void> init({String? overridePath}) async {
     if (_initialized) return;
-    final path = overridePath ?? (await getApplicationDocumentsDirectory()).path;
-    Hive.init(path);
+    if (overridePath != null) {
+      Hive.init(overridePath);
+    } else {
+      await Hive.initFlutter();
+    }
     await Future.wait([
       Hive.openBox<dynamic>(StorageKeys.savedGameBox),
       Hive.openBox<dynamic>(StorageKeys.settingsBox),

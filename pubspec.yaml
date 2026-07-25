@@ -27,7 +27,6 @@ dependencies:
   shared_preferences: ^2.3.3
   hive: ^2.2.3
   hive_flutter: ^1.1.0
-  path_provider: ^2.1.5
 
   # Audio & haptics
   audioplayers: ^6.1.0
@@ -66,3 +65,23 @@ flutter:
     - assets/audio/sfx/
     - assets/audio/music/
     - assets/lang/
+
+  # Roboto burada gerçek bir varlık olarak paketlenir; aksi halde Flutter
+  # Web, varsayılan "Roboto" yazı tipini çalışma zamanında internetten
+  # (fonts.gstatic.com) indirmeye çalışır ve bu, "tamamen offline
+  # oynanabilir" gereksinimini bozar (bkz. assets/fonts/Roboto/NOTICE.md).
+  fonts:
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Roboto/Roboto-Thin.ttf
+          weight: 100
+        - asset: assets/fonts/Roboto/Roboto-Light.ttf
+          weight: 300
+        - asset: assets/fonts/Roboto/Roboto-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Roboto/Roboto-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Roboto/Roboto-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Roboto/Roboto-Black.ttf
+          weight: 900

@@ -113,12 +113,50 @@ flutter test
   geçişleri), el sonucu ekranında kazanan için yaylanan kupa animasyonu
   ve puan kartları için kademeli (staggered) giriş animasyonu —
   tamamı "Animasyonlar" ayarı kapatıldığında anında (animasyonsuz)
-  gösterime döner.
+  gösterime döner. Web build'i gerçek (headless) bir tarayıcıda,
+  internet erişimi tamamen kapalıyken çalıştırılarak test edildi; bu
+  test iki **gerçek, kritik hata** buldu ve düzelttiler (bkz. "Web
+  build'de bulunan ve düzeltilen hatalar" bölümü).
 
 Planlanan 8 aşamanın tamamı tamamlandı. Oyun motoru kararlı biçimde
 `domain/services` (taş/dağıtım), `domain/rules` (tur/hamle doğrulama) ve
 `domain/ai` (yapay zekâ) katmanlarında, UI'dan tamamen bağımsız
 geliştirildi; UI yalnızca `features/*/presentation` katmanında yaşar.
+
+### Web build'de bulunan ve düzeltilen hatalar
+
+Otomatik testler (analyze/test) hiçbir zaman gerçek bir tarayıcıda,
+gerçek ağ koşullarında çalışmaz; bu yüzden web build'i headless bir
+Chromium'da fiilen açıp test etmek iki hatayı ortaya çıkardı ki
+bunlar 163 testin hiçbiri tarafından yakalanamazdı:
+
+- **Uygulama, internet olmadan tamamen boş bir sayfa olarak kalıyordu**:
+  Flutter Web, projeye bir font paketlenmediğinde varsayılan "Roboto"
+  yazı tipini çalışma zamanında `fonts.gstatic.com` üzerinden
+  indirmeye çalışır. Bu proje "tamamen offline oynanabilir" olmalı,
+  ama font hiçbir zaman pakete dahil edilmemişti — bu da tam olarak
+  yanlış "internet erişimi olmadan çalışsın diye özel font eklemedik"
+  gerekçesiyle bilinçli(!) bir tercih sanılmıştı (bkz. eski Aşama 8
+  kapsam notu, aşağıda düzeltildi). Gerçekte bunun tam tersi doğruydu:
+  font paketlenmediği için uygulama internetsizken ilk kareyi hiç
+  çizemiyor, tamamen boş bir sayfa kalıyordu. Düzeltme: Roboto (Apache
+  License 2.0, bkz. `assets/fonts/Roboto/NOTICE.md`) gerçek bir varlık
+  olarak `assets/fonts/Roboto/` altına paketlendi ve `pubspec.yaml`
+  içinde tanımlandı.
+- **`HiveStorageService.init()`, web'de hiç çalışmıyordu**: kalıcılık
+  başlatması `path_provider` ile belge dizinini sorguluyordu, ama
+  `path_provider`'ın bir web uygulaması yok — bu da `main()` içinde
+  `runApp()`'tan önce sessizce (yakalanmamış bir istisnayla) çöküyor,
+  uygulamanın web'de asla açılmamasına yol açıyordu. Düzeltme:
+  `path_provider` tamamen kaldırıldı; artık `hive_flutter` paketinin
+  `Hive.initFlutter()` fonksiyonu kullanılıyor — bu, platforma göre
+  doğru depolamayı (mobil/masaüstünde belge dizini, Web'de IndexedDB)
+  otomatik seçer.
+
+Düzeltmelerden sonra web build'i, tarayıcının Google Fonts CDN'ine
+erişimi tamamen engellenmiş bir headless Chromium'da yeniden test
+edildi: ana menü, oyun kurulumu ve tam bir oyun masası (AI turları
+dahil) doğru biçimde çizildi.
 
 ### Aşama 6 kapsam notları (bilinçli basitleştirmeler)
 
@@ -150,11 +188,12 @@ geliştirildi; UI yalnızca `features/*/presentation` katmanında yaşar.
 
 ### Aşama 8 kapsam notları (bilinçli basitleştirmeler)
 
-- **Özel font (Google Fonts vb.) eklenmedi**: uygulamanın çevrimdışı
-  çalışma hedefiyle çelişmemesi için (bazı font paketleri ilk açılışta
-  ağdan dosya indirmeye çalışır) tipografi, Flutter'ın Material 3
-  metin teması üzerinden (ağırlık/aralık ayarlarıyla) iyileştirildi;
-  gerçekten yerleşik (bundled) bir font dosyası eklenmedi.
+- **`google_fonts` gibi çalışma zamanında ağdan indirme yapan bir paket
+  eklenmedi**: bunun yerine Roboto, gerçek bir varlık (asset) olarak
+  doğrudan pakete gömüldü (bkz. "Web build'de bulunan ve düzeltilen
+  hatalar" — bunun tam tersi bir ilk karar, yani hiç font paketlememek,
+  aslında web'de uygulamayı tamamen çalışmaz hale getiren gerçek bir
+  hataydı).
 - **Sayfa geçiş animasyonları, "Animasyonlar" ayarına bağlı değil**:
   bu ayar bilinçli olarak yalnızca oyun masası içi geri bildirimleri
   (taş/per animasyonları, sürükleme vurguları) ve el sonucu ekranındaki
