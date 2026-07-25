@@ -41,7 +41,17 @@ flutter test
 
 ## Proje durumu
 
-Şu anda **Aşama 2: Temel domain modelleri** tamamlandı (taş, oyuncu, per,
-oyun kuralları, oyun state'i, oyun hareketleri, skor modelleri). Oyun
-motoru, kural doğrulama, yapay zekâ ve kullanıcı arayüzü sonraki
-aşamalarda eklenecektir.
+- **Aşama 1-2 ✅** Mimari, klasör yapısı, temel domain modelleri (taş,
+  oyuncu, per, oyun kuralları, oyun state'i, oyun hareketleri, skor
+  modelleri).
+- **Aşama 3 ✅** Taş üretimi (106 taş), karıştırma, gösterge/okey
+  belirleme, kurallara uygun dağıtım (`GameSetupService`) ve tur akışı
+  motoru (`TurnEngine`: taş çekme, ortadan alma, taş atma, ıstaka
+  yeniden sıralama, deste tükenme politikaları).
+- **Aşama 4+ ⏳** Per doğrulama (seri/grup/okeyli per, 101 açılış, çift
+  açma), masaya taş işleme, yapay zekâ, kullanıcı arayüzü, kayıt/ayarlar
+  sonraki aşamalarda eklenecektir.
+
+Oyun motoru kararlı biçimde `domain/services` (taş/dağıtım) ve
+`domain/rules` (tur/hamle doğrulama) katmanlarında, UI'dan tamamen
+bağımsız geliştiriliyor.

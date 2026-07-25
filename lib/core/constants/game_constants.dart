@@ -8,6 +8,12 @@ abstract final class GameConstants {
   static const int copiesPerNormalTile = 2;
   static const int falseOkeyCount = 2;
 
+  /// Sahte okey taşlarının fiziksel karşılığı yoktur (basılı sayısı
+  /// bulunmaz); bu değer yalnızca [OkeyTile.number] alanının non-null
+  /// kısıtını karşılamak için kullanılan bir yer tutucudur ve hiçbir kural
+  /// hesaplamasında okunmaz (`isFalseOkey` her zaman joker olarak davranır).
+  static const int falseOkeyPlaceholderNumber = 0;
+
   /// 4 renk * 13 sayı * 2 kopya + 2 sahte okey = 106 taş.
   static const int totalTileCount =
       tileColorCount * tileNumberMax * copiesPerNormalTile + falseOkeyCount;

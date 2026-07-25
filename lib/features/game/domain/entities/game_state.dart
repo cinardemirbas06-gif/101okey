@@ -41,6 +41,11 @@ class GameState with _$GameState {
     DateTime? turnStartedAt,
     @Default(false) bool hasDrawnThisTurn,
     @Default(false) bool hasDiscardedThisTurn,
+
+    /// Aktif oyuncunun bu tur ortadan aldığı taşın kimliği (varsa).
+    /// `DiscardTakePolicy` doğrulaması (Aşama 4, per işleme ile birlikte)
+    /// bu alanı kullanır; tur değiştiğinde `null`'a sıfırlanır.
+    String? tileTakenFromDiscardId,
     String? lastActionDescription,
 
     /// Hedef puan modunda oyunun biteceği puan; diğer modlarda null.
