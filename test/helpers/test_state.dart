@@ -18,6 +18,8 @@ GameState buildTestGameState({
   List<OkeyTile> drawPile = const [],
   List<OkeyTile> discardPile = const [],
   bool hasDrawnThisTurn = true,
+  OkeyTile? indicatorTile,
+  OkeyTile? okeyTile,
 }) {
   return GameState(
     gameId: 'test_game',
@@ -34,6 +36,11 @@ GameState buildTestGameState({
     discardPile: discardPile,
     tableMelds: tableMelds,
     hasDrawnThisTurn: hasDrawnThisTurn,
+    // AiVisibleStateMapper gibi tüketiciler bunların her zaman dolu
+    // olduğunu varsayar (gerçek oyunda dağıtımdan sonra hep doludur);
+    // testlerde aksi belirtilmedikçe makul varsayılanlar kullanılır.
+    indicatorTile: indicatorTile ?? normalTile('_ind', TileColor.black, 4),
+    okeyTile: okeyTile ?? okeyJoker('_okey_ref', TileColor.black, 5),
   );
 }
 

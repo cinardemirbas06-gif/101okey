@@ -58,9 +58,18 @@ flutter test
   çarpanı, elde kalan okey/sahte okey cezaları, bitiş türü çarpanları,
   maxHandPenalty sınırı, deste tükenmesinde berabere/en düşük-el-kazanır
   senaryoları).
-- **Aşama 5+ ⏳** Yapay zekâ, kullanıcı arayüzü, kayıt/ayarlar sonraki
-  aşamalarda eklenecektir.
+- **Aşama 5 ✅** Yapay zekâ (`domain/ai`): `AiVisibleStateMapper` (AI
+  yalnızca görünür bilgiyle çalışır, rakip elleri asla görmez),
+  `HandMeldFinder`/`MeldCombinationSearch` (olası per adayları ve sınırlı
+  kombinasyon araması), `OpeningAttemptFinder`/`HandCoverageFinder`
+  (açılış ve bitirme denemeleri), `DiscardAdvisor` (zorluk ve kişiliğe
+  göre ağırlıklandırılmış taş atma kararı) ve bunları birleştiren
+  `AiPlayerEngine` (tam bir AI turu: çekme, açma/işleme, bitirme denemesi,
+  taş atma — hepsi TurnEngine/MeldEngine/FinishEngine üzerinden, AI için
+  ayrı bir "arka kapı" olmadan).
+- **Aşama 6+ ⏳** Kullanıcı arayüzü, kayıt/ayarlar sonraki aşamalarda
+  eklenecektir.
 
-Oyun motoru kararlı biçimde `domain/services` (taş/dağıtım) ve
-`domain/rules` (tur/hamle doğrulama) katmanlarında, UI'dan tamamen
-bağımsız geliştiriliyor.
+Oyun motoru kararlı biçimde `domain/services` (taş/dağıtım), `domain/rules`
+(tur/hamle doğrulama) ve `domain/ai` (yapay zekâ) katmanlarında, UI'dan
+tamamen bağımsız geliştiriliyor.
