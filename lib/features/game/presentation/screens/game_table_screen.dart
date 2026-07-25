@@ -75,7 +75,7 @@ class GameTableScreen extends ConsumerWidget {
         : (human.hand.length / 2).ceil();
     final tileWidthByAvailableWidth =
         (screenSize.width - 32) / (tileCountForSizing + 1);
-    final maxRackHeight = screenSize.height * 0.34;
+    final maxRackHeight = screenSize.height * 0.24;
     final tileWidthByAvailableHeight = (maxRackHeight - 16) / 2.15 / 1.45;
     final tileWidth = tileWidthByAvailableWidth
         .clamp(0.0, tileWidthByAvailableHeight)
