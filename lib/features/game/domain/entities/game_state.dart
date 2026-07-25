@@ -1,5 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import '../enums/finish_type.dart';
 import '../enums/game_mode.dart';
 import '../enums/game_phase.dart';
 import '../enums/turn_direction.dart';
@@ -47,6 +48,14 @@ class GameState with _$GameState {
     /// bu alanı kullanır; tur değiştiğinde `null`'a sıfırlanır.
     String? tileTakenFromDiscardId,
     String? lastActionDescription,
+
+    /// El bittiğinde (`GamePhase.calculatingScore`/`finished`) kazanan
+    /// oyuncunun kimliği; berabere/sonuçsuz biten ellerde `null` kalır.
+    String? winnerPlayerId,
+
+    /// Elin nasıl bittiği (normal/okeyle/çiftten/elden). Kazanan yoksa
+    /// (deste tükenmesiyle sonuçsuz biten el gibi) `null` kalır.
+    FinishType? finishType,
 
     /// Hedef puan modunda oyunun biteceği puan; diğer modlarda null.
     int? targetScore,

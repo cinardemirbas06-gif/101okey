@@ -53,8 +53,13 @@ flutter test
   (`PairEvaluator`), 101 açılış puan hesabı (`OpeningScoreCalculator`) ve
   bunları birleştiren `MeldEngine` (per açma, masaya taş işleme, okey
   değiştirme).
-- **Aşama 5+ ⏳** Bitirme/puanlama motoru, yapay zekâ, kullanıcı arayüzü,
-  kayıt/ayarlar sonraki aşamalarda eklenecektir.
+- **Aşama 4.5 ✅** Bitirme motoru (`FinishEngine`: normal/okeyle/çiftten/
+  elden bitiş) ve puanlama motoru (`ScoringEngine`: açılmamış oyuncu
+  çarpanı, elde kalan okey/sahte okey cezaları, bitiş türü çarpanları,
+  maxHandPenalty sınırı, deste tükenmesinde berabere/en düşük-el-kazanır
+  senaryoları).
+- **Aşama 5+ ⏳** Yapay zekâ, kullanıcı arayüzü, kayıt/ayarlar sonraki
+  aşamalarda eklenecektir.
 
 Oyun motoru kararlı biçimde `domain/services` (taş/dağıtım) ve
 `domain/rules` (tur/hamle doğrulama) katmanlarında, UI'dan tamamen

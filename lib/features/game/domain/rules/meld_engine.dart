@@ -13,6 +13,7 @@ import '../enums/meld_type.dart';
 import 'engine_support.dart';
 import 'meld_validator.dart';
 import 'opening_score_calculator.dart';
+import 'pair_meld_support.dart';
 
 const _uuid = Uuid();
 
@@ -291,7 +292,7 @@ abstract final class MeldEngine {
     Player player,
     List<List<OkeyTile>> groups,
   ) {
-    final pairCheck = _validateProposedPairs(
+    final pairCheck = PairMeldSupport.validateProposedPairGroups(
       groups,
       state.rules.pairJokerPolicy,
     );
@@ -306,7 +307,7 @@ abstract final class MeldEngine {
     }
 
     final resolvedMelds = groups
-        .map((pairTiles) => _buildPairMeld(player.id, pairTiles))
+        .map((pairTiles) => PairMeldSupport.buildPairMeld(player.id, pairTiles))
         .toList();
 
     final usedIds = groups.expand((g) => g.map((t) => t.id)).toSet();
@@ -325,58 +326,6 @@ abstract final class MeldEngine {
       tableMelds: [...state.tableMelds, ...resolvedMelds],
       lastActionDescription:
           '${player.name} çiftten açılış yaptı (${groups.length} çift).',
-    );
-  }
-
-  /// Önerilen çift gruplarının yapısal olarak geçerli olup olmadığını
-  /// kontrol eder; geçersizse hata mesajını, geçerliyse `null` döndürür.
-  static String? _validateProposedPairs(
-    List<List<OkeyTile>> groups,
-    PairJokerPolicy policy,
-  ) {
-    var jokerBudget = switch (policy) {
-      PairJokerPolicy.naturalOnly => 0,
-      PairJokerPolicy.maxOne => 1,
-      PairJokerPolicy.unlimited => 1 << 30,
-    };
-
-    for (final group in groups) {
-      if (group.length != 2) {
-        return 'Her çift tam olarak 2 taştan oluşmalıdır.';
-      }
-      final jokerCount = group.where((t) => t.actsAsJoker).length;
-      if (jokerCount == 0) {
-        final a = group[0];
-        final b = group[1];
-        if (a.color != b.color || a.number != b.number) {
-          return 'Çift, aynı renk ve sayıdan iki taştan oluşmalıdır.';
-        }
-      } else {
-        if (jokerCount > jokerBudget) {
-          return 'Bu masada çiftte kullanılabilecek okey sayısı aşıldı.';
-        }
-        jokerBudget -= jokerCount;
-      }
-    }
-    return null;
-  }
-
-  static Meld _buildPairMeld(String playerId, List<OkeyTile> pairTiles) {
-    final natural = pairTiles.firstWhereOrNull((t) => !t.actsAsJoker);
-    final resolvedTiles = pairTiles.map((t) {
-      if (!t.actsAsJoker) return MeldTile(tile: t);
-      return MeldTile(
-        tile: t,
-        representedColor: natural?.color,
-        representedNumber: natural?.number,
-      );
-    }).toList();
-
-    return Meld(
-      id: _uuid.v4(),
-      type: MeldType.pair,
-      openedByPlayerId: playerId,
-      tiles: resolvedTiles,
     );
   }
 

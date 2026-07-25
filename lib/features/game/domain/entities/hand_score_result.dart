@@ -11,7 +11,10 @@ part 'hand_score_result.g.dart';
 class HandScoreResult with _$HandScoreResult {
   const factory HandScoreResult({
     required int handNumber,
-    required String winnerPlayerId,
+
+    /// Kazanan oyuncunun kimliği; deste tükenmesiyle sonuçsuz/berabere
+    /// biten ellerde (bkz. `DeckExhaustionPolicy.handIsDraw`) `null`dır.
+    String? winnerPlayerId,
     required FinishType finishType,
     required List<PlayerHandScore> playerScores,
   }) = _HandScoreResult;
