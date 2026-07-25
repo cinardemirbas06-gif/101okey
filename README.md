@@ -93,13 +93,32 @@ flutter test
   AI'ı yenme, okeysiz kazanma, masaya 10 taş işleme); sıra süresi
   dolduğunda `DiscardAdvisor` kullanılarak otomatik çekme/atma; ve
   `TurnEngine.rearrangeHand` üzerinden gerçek "Sırala" özelliği.
-- **Aşama 8 ⏳** Ek birim/widget/entegrasyon testleri ve performans
-  optimizasyonu sonraki aşamada eklenecektir.
+- **Aşama 8 ✅** Test kapsamı genişletme, performans ve görsel cila:
+  önceden test edilmeyen ekranlar (Ayarlar, İstatistikler, Başarımlar,
+  Kurallar, El Sonucu) için widget testleri; motor katmanlarını
+  (`GameSetupService` → `AiPlayerEngine` → `TurnEngine`/`MeldEngine`/
+  `FinishEngine` → `ScoringEngine`) uçtan uca zincirleyen bir
+  entegrasyon testi. Bu test yazılırken gerçek bir dayanıklılık açığı
+  bulundu ve düzeltildi: `TurnEngine`'e `GameConstants.maxTurnsPerHand`
+  güvenlik ağı eklendi — çekme destesi küçük olduğundan (~20 taş),
+  oyuncular kapalı desteden hiç çekmeyip sürekli ortadaki açık taşı
+  alırsa el, deste hiç tükenmeden teorik olarak sonsuza kadar sürebiliyordu;
+  artık böyle bir durumda el, deste tükenmesindeki gibi sonuçsuz
+  sayılarak güvenle sonlandırılıyor. Performans: `GameTableScreen`'deki
+  saniyelik tur sayacı, tüm oyun masasını (ıstaka, masaya açılmış
+  perler, sürükle-bırak hedefleri) her saniye yeniden çizdiren tek bir
+  `Timer`'dan, yalnızca kendi küçük metnini yeniden çizen ayrı bir
+  `_TurnCountdown` alt widget'ına taşındı. Görsel cila: merkezi
+  `AppTheme` (tutarlı buton/kart/başlık/diyalog stilleri, yumuşak sayfa
+  geçişleri), el sonucu ekranında kazanan için yaylanan kupa animasyonu
+  ve puan kartları için kademeli (staggered) giriş animasyonu —
+  tamamı "Animasyonlar" ayarı kapatıldığında anında (animasyonsuz)
+  gösterime döner.
 
-Oyun motoru kararlı biçimde `domain/services` (taş/dağıtım), `domain/rules`
-(tur/hamle doğrulama) ve `domain/ai` (yapay zekâ) katmanlarında, UI'dan
-tamamen bağımsız geliştiriliyor; UI yalnızca `features/*/presentation`
-katmanında yaşar.
+Planlanan 8 aşamanın tamamı tamamlandı. Oyun motoru kararlı biçimde
+`domain/services` (taş/dağıtım), `domain/rules` (tur/hamle doğrulama) ve
+`domain/ai` (yapay zekâ) katmanlarında, UI'dan tamamen bağımsız
+geliştirildi; UI yalnızca `features/*/presentation` katmanında yaşar.
 
 ### Aşama 6 kapsam notları (bilinçli basitleştirmeler)
 
@@ -128,3 +147,16 @@ katmanında yaşar.
 - **Kayıt sistemi tek bir aktif oyunu destekler**: birden fazla kayıt
   yuvası (slot) yerine tek bir "devam eden oyun" kaydı tutulur, çünkü
   oyun kuralları tek seferde tek bir masa oturumunu varsayar.
+
+### Aşama 8 kapsam notları (bilinçli basitleştirmeler)
+
+- **Özel font (Google Fonts vb.) eklenmedi**: uygulamanın çevrimdışı
+  çalışma hedefiyle çelişmemesi için (bazı font paketleri ilk açılışta
+  ağdan dosya indirmeye çalışır) tipografi, Flutter'ın Material 3
+  metin teması üzerinden (ağırlık/aralık ayarlarıyla) iyileştirildi;
+  gerçekten yerleşik (bundled) bir font dosyası eklenmedi.
+- **Sayfa geçiş animasyonları, "Animasyonlar" ayarına bağlı değil**:
+  bu ayar bilinçli olarak yalnızca oyun masası içi geri bildirimleri
+  (taş/per animasyonları, sürükleme vurguları) ve el sonucu ekranındaki
+  kutlama animasyonlarını kapsar; ekranlar arası geçişler ayrı bir
+  kaygı olarak görülüp her zaman açık bırakıldı.

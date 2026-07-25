@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:okey_101_pro/core/constants/game_constants.dart';
 import 'package:okey_101_pro/core/errors/game_exceptions.dart';
 import 'package:okey_101_pro/core/random/random_provider.dart';
 import 'package:okey_101_pro/features/game/domain/entities/game_rules_config.dart';
@@ -171,6 +172,44 @@ void main() {
 
       expect(afterDiscard.activePlayerIndex, 3);
     });
+
+    test(
+      'maxTurnsPerHand güvenlik ağı: sınıra ulaşan tur eli sonuçsuz bitirir',
+      () {
+        final state = freshGame().copyWith(
+          turnNumber: GameConstants.maxTurnsPerHand,
+        );
+
+        final afterDiscard = TurnEngine.discardTile(
+          state,
+          'p1',
+          state.activePlayer.hand.first.id,
+        );
+
+        expect(afterDiscard.phase, GamePhase.finished);
+        expect(afterDiscard.winnerPlayerId, isNull);
+        // Sınırın altındaki normal turlar etkilenmemeli.
+        expect(afterDiscard.turnNumber, GameConstants.maxTurnsPerHand + 1);
+      },
+    );
+
+    test(
+      'maxTurnsPerHand sınırının hemen altındaki tur normal şekilde ilerler',
+      () {
+        final state = freshGame().copyWith(
+          turnNumber: GameConstants.maxTurnsPerHand - 1,
+        );
+
+        final afterDiscard = TurnEngine.discardTile(
+          state,
+          'p1',
+          state.activePlayer.hand.first.id,
+        );
+
+        expect(afterDiscard.phase, GamePhase.waitingForDraw);
+        expect(afterDiscard.turnNumber, GameConstants.maxTurnsPerHand);
+      },
+    );
 
     test('deste tükenince handIsDraw politikası eli sonlandırır', () {
       final state = freshGame();

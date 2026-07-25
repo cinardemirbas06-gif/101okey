@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../achievements/domain/achievement_definition.dart';
+import '../../../settings/presentation/controllers/settings_controller.dart';
 import '../../domain/entities/player_hand_score.dart';
 import '../controllers/game_controller.dart';
 
@@ -16,6 +19,9 @@ class HandResultScreen extends ConsumerWidget {
     final session = ref.watch(gameControllerProvider);
     final result = session.lastHandScore;
     final gameState = session.gameState;
+    final animationsEnabled = ref.watch(
+      settingsControllerProvider.select((s) => s.animationsEnabled),
+    );
 
     if (result == null || gameState == null) {
       return const Scaffold(body: Center(child: Text('Sonuç bulunamadı.')));
@@ -27,19 +33,16 @@ class HandResultScreen extends ConsumerWidget {
               .firstWhere((p) => p.id == result.winnerPlayerId)
               .name;
 
+    var entranceIndex = 0;
+
     return Scaffold(
       appBar: AppBar(title: const Text('El Sonucu')),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          Center(
-            child: Text(
-              winnerName == null
-                  ? 'El sonuçsuz kaldı (berabere)'
-                  : '$winnerName kazandı!',
-              style: Theme.of(context).textTheme.headlineSmall,
-              textAlign: TextAlign.center,
-            ),
+          _CelebrationHeader(
+            winnerName: winnerName,
+            animationsEnabled: animationsEnabled,
           ),
           if (winnerName != null)
             Center(
@@ -50,11 +53,15 @@ class HandResultScreen extends ConsumerWidget {
             ),
           const SizedBox(height: 24),
           for (final score in result.playerScores)
-            _PlayerScoreCard(
-              playerName: gameState.players
-                  .firstWhere((p) => p.id == score.playerId)
-                  .name,
-              score: score,
+            _StaggeredEntrance(
+              index: entranceIndex++,
+              enabled: animationsEnabled,
+              child: _PlayerScoreCard(
+                playerName: gameState.players
+                    .firstWhere((p) => p.id == score.playerId)
+                    .name,
+                score: score,
+              ),
             ),
           if (session.newlyUnlockedAchievements.isNotEmpty) ...[
             const SizedBox(height: 16),
@@ -65,11 +72,15 @@ class HandResultScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             for (final id in session.newlyUnlockedAchievements)
-              Card(
-                color: Colors.amber.shade50,
-                child: ListTile(
-                  leading: Icon(Icons.emoji_events, color: Colors.amber.shade700),
-                  title: Text(_achievementTitle(id)),
+              _StaggeredEntrance(
+                index: entranceIndex++,
+                enabled: animationsEnabled,
+                child: Card(
+                  color: Colors.amber.shade50,
+                  child: ListTile(
+                    leading: Icon(Icons.emoji_events, color: Colors.amber.shade700),
+                    title: Text(_achievementTitle(id)),
+                  ),
                 ),
               ),
           ],
@@ -105,6 +116,114 @@ class HandResultScreen extends ConsumerWidget {
       'indicatorFinish' => 'Göstergeyle bitiş',
       _ => raw,
     };
+  }
+}
+
+/// Kazananı büyük bir başlık ve (animasyonlar açıksa) yaylanan bir
+/// kupa ikonuyla vurgulayan üst bölüm.
+class _CelebrationHeader extends StatelessWidget {
+  const _CelebrationHeader({
+    required this.winnerName,
+    required this.animationsEnabled,
+  });
+
+  final String? winnerName;
+  final bool animationsEnabled;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = Text(
+      winnerName == null ? 'El sonuçsuz kaldı (berabere)' : '$winnerName kazandı!',
+      style: Theme.of(context).textTheme.headlineSmall,
+      textAlign: TextAlign.center,
+    );
+
+    if (winnerName == null) {
+      return Center(child: title);
+    }
+
+    final trophy = Icon(
+      Icons.emoji_events,
+      color: Colors.amber.shade700,
+      size: 56,
+    );
+
+    return Center(
+      child: Column(
+        children: [
+          if (!animationsEnabled)
+            trophy
+          else
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: 1),
+              duration: const Duration(milliseconds: 500),
+              curve: Curves.elasticOut,
+              builder: (context, value, child) =>
+                  Transform.scale(scale: value, child: child),
+              child: trophy,
+            ),
+          const SizedBox(height: 8),
+          title,
+        ],
+      ),
+    );
+  }
+}
+
+/// Bir listedeki öğeleri sırayla (kademeli gecikmeyle) belirip kayarak
+/// içeri sokan sarmalayıcı. `enabled` kapalıyken (kullanıcı animasyonları
+/// kapattıysa) içerik anında görünür.
+class _StaggeredEntrance extends StatefulWidget {
+  const _StaggeredEntrance({
+    required this.index,
+    required this.enabled,
+    required this.child,
+  });
+
+  final int index;
+  final bool enabled;
+  final Widget child;
+
+  @override
+  State<_StaggeredEntrance> createState() => _StaggeredEntranceState();
+}
+
+class _StaggeredEntranceState extends State<_StaggeredEntrance> {
+  late bool _visible = !widget.enabled;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.enabled) {
+      // `Future.delayed` taahhüdü doğrudan iptal edilemez; alttaki
+      // gerçek zamanlı `Timer`'ı elde tutup `dispose`da iptal etmek,
+      // widget testin ortasında elenirse (örn. sayfa değişirse) sarkan
+      // bir zamanlayıcı bırakmamak için gereklidir.
+      _timer = Timer(Duration(milliseconds: 80 * widget.index), () {
+        if (mounted) setState(() => _visible = true);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSlide(
+      offset: _visible ? Offset.zero : const Offset(0, 0.12),
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+      child: AnimatedOpacity(
+        opacity: _visible ? 1 : 0,
+        duration: const Duration(milliseconds: 300),
+        child: widget.child,
+      ),
+    );
   }
 }
 

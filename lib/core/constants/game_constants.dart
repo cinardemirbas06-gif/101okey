@@ -55,5 +55,15 @@ abstract final class GameConstants {
   // --- Kayıt ---
   static const int currentSaveSchemaVersion = 1;
 
+  /// Bir elin sürebileceği azami tur sayısı (dörtte biri kadar tur =
+  /// oyuncu başına ~125 tur). Bu bir "ev kuralı" değil, saf bir
+  /// güvenlik ağıdır: çekme destesi küçük olduğundan (~20 taş),
+  /// oyuncular kapalı desteden hiç çekmeyip sürekli ortadaki açık taşı
+  /// alırsa (örn. tüm oyuncular AI ise ve hiçbiri 101 açamıyorsa) el,
+  /// deste hiç tükenmeden teorik olarak sonsuza kadar sürebilir. Bu
+  /// sınıra ulaşılırsa el, deste tükenmesindeki gibi sonuçsuz (berabere)
+  /// sayılarak sonlandırılır.
+  static const int maxTurnsPerHand = 500;
+
   const GameConstants._();
 }

@@ -35,6 +35,28 @@ abstract final class HiveStorageService {
     _initialized = false;
   }
 
+  /// Yalnızca testlerde: [init] daha önce çağrılıp çağrılmadığını bildirir.
+  static bool get isInitializedForTesting => _initialized;
+
+  /// Yalnızca testlerde: kutuları kapatıp yeniden açmadan (bkz.
+  /// [resetForTesting]) tüm içeriklerini boşaltır.
+  ///
+  /// `Hive.close()` + yeniden `init`, önceki bir testte tetiklenmiş ama
+  /// hiç `await` edilmemiş (`unawaited`) bir yazma işlemi hâlâ havadayken
+  /// çağrılırsa süresiz olarak asılı kalabilir (widget testlerinde
+  /// gerçek dosya G/Ç'si ile fake-async test alanının etkileşimi
+  /// nedeniyle). Testler arasında yalnızca kutu içeriğini temizlemek bu
+  /// riski tamamen ortadan kaldırır ve izolasyonu aynı şekilde sağlar.
+  static Future<void> clearAllForTesting() async {
+    if (!_initialized) return;
+    await Future.wait([
+      savedGameBox.clear(),
+      settingsBox.clear(),
+      statisticsBox.clear(),
+      achievementsBox.clear(),
+    ]);
+  }
+
   static Box<dynamic> get savedGameBox => Hive.box(StorageKeys.savedGameBox);
   static Box<dynamic> get settingsBox => Hive.box(StorageKeys.settingsBox);
   static Box<dynamic> get statisticsBox => Hive.box(StorageKeys.statisticsBox);

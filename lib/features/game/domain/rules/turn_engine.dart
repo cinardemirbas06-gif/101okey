@@ -1,5 +1,6 @@
 import 'package:collection/collection.dart';
 
+import '../../../../core/constants/game_constants.dart';
 import '../../../../core/errors/game_exceptions.dart';
 import '../../../../core/random/random_provider.dart';
 import '../entities/game_rules_config.dart';
@@ -176,6 +177,17 @@ abstract final class TurnEngine {
   // --- Yardımcılar --------------------------------------------------------
 
   static GameState _advanceTurn(GameState afterDiscard) {
+    final nextTurnNumber = afterDiscard.turnNumber + 1;
+    if (nextTurnNumber > GameConstants.maxTurnsPerHand) {
+      // Güvenlik ağı: bkz. GameConstants.maxTurnsPerHand dokümantasyonu.
+      return afterDiscard.copyWith(
+        turnNumber: nextTurnNumber,
+        phase: GamePhase.finished,
+        lastActionDescription:
+            'El, azami tur sayısına ulaşıldığı için sonuçsuz sonlandırıldı.',
+      );
+    }
+
     final playerCount = afterDiscard.players.length;
     // Oyuncu listesi masada saat yönünde oturma sırasını temsil eder;
     // TurnDirection.clockwise index'i artırır, counterClockwise azaltır.
@@ -187,7 +199,7 @@ abstract final class TurnEngine {
 
     return afterDiscard.copyWith(
       activePlayerIndex: nextIndex,
-      turnNumber: afterDiscard.turnNumber + 1,
+      turnNumber: nextTurnNumber,
       hasDrawnThisTurn: false,
       hasDiscardedThisTurn: false,
       tileTakenFromDiscardId: null,

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'router.dart';
-import 'theme/tile_palette.dart';
+import 'theme/app_theme.dart';
 
 /// Uygulamanın kök widget'ı: tema ve GoRouter yönlendirmesini kurar.
 class OkeyProApp extends StatelessWidget {
@@ -12,12 +12,7 @@ class OkeyProApp extends StatelessWidget {
     return MaterialApp.router(
       title: '101 Okey Pro',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: TilePalette.tableFeltGreen,
-        ),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.light,
       routerConfig: appRouter,
     );
   }

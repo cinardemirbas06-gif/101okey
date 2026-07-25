@@ -22,42 +22,11 @@ import '../widgets/table_meld_view.dart';
 
 /// Oyun masası ekranı: rakipler, ortadaki alan, masaya açılmış perler,
 /// insan oyuncunun ıstakası ve hamle butonları.
-class GameTableScreen extends ConsumerStatefulWidget {
+class GameTableScreen extends ConsumerWidget {
   const GameTableScreen({super.key});
 
   @override
-  ConsumerState<GameTableScreen> createState() => _GameTableScreenState();
-}
-
-class _GameTableScreenState extends ConsumerState<GameTableScreen> {
-  Timer? _turnTimer;
-
-  @override
-  void initState() {
-    super.initState();
-    _turnTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-      setState(() {}); // sayaç metnini yenilemek için
-      final gameState = ref.read(gameControllerProvider).gameState;
-      if (gameState == null) return;
-      if (gameState.activePlayer.id != kHumanPlayerId) return;
-      if (!gameState.rules.timerEnabled) return;
-      final startedAt = gameState.turnStartedAt;
-      if (startedAt == null) return;
-      if (DateTime.now().difference(startedAt) >= gameState.rules.turnDuration) {
-        ref.read(gameControllerProvider.notifier).handleTurnTimeout();
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _turnTimer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsControllerProvider);
 
     ref.listen(gameControllerProvider, (previous, next) {
@@ -95,16 +64,6 @@ class _GameTableScreenState extends ConsumerState<GameTableScreen> {
     final opponents = gameState.players.where((p) => p.id != kHumanPlayerId).toList();
     final isHumanTurn = gameState.activePlayer.id == kHumanPlayerId;
 
-    int? remainingSeconds;
-    if (isHumanTurn &&
-        gameState.rules.timerEnabled &&
-        gameState.turnStartedAt != null) {
-      final elapsed = DateTime.now().difference(gameState.turnStartedAt!);
-      remainingSeconds = (gameState.rules.turnDuration - elapsed)
-          .inSeconds
-          .clamp(0, gameState.rules.turnDuration.inSeconds);
-    }
-
     final screenWidth = MediaQuery.sizeOf(context).width;
     final tileCountForSizing = human.hand.isEmpty
         ? 8
@@ -140,7 +99,6 @@ class _GameTableScreenState extends ConsumerState<GameTableScreen> {
               turnNumber: gameState.turnNumber,
               lastAction: gameState.lastActionDescription,
               isAiThinking: session.isAiThinking,
-              remainingSeconds: remainingSeconds,
             ),
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
@@ -326,14 +284,12 @@ class _TopBar extends StatelessWidget {
     required this.turnNumber,
     required this.lastAction,
     required this.isAiThinking,
-    required this.remainingSeconds,
   });
 
   final int handNumber;
   final int turnNumber;
   final String? lastAction;
   final bool isAiThinking;
-  final int? remainingSeconds;
 
   @override
   Widget build(BuildContext context) {
@@ -355,23 +311,7 @@ class _TopBar extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          if (remainingSeconds != null) ...[
-            Icon(
-              Icons.timer_outlined,
-              size: 14,
-              color: remainingSeconds! <= 5 ? Colors.redAccent : Colors.white70,
-            ),
-            const SizedBox(width: 4),
-            Text(
-              '${remainingSeconds}sn',
-              style: TextStyle(
-                color: remainingSeconds! <= 5 ? Colors.redAccent : Colors.white70,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(width: 12),
-          ],
+          const _TurnCountdown(),
           if (isAiThinking) ...[
             const SizedBox(
               width: 12,
@@ -387,6 +327,95 @@ class _TopBar extends StatelessWidget {
               style: TextStyle(color: Colors.white70, fontSize: 12),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Sıra süresi geri sayımını gösteren, kendi `Timer`'ını yöneten küçük
+/// bir alt widget.
+///
+/// Bu widget bilinçli olarak [GameTableScreen]'den ayrıldı: saniyede bir
+/// tetiklenen sayaç, yalnızca bu küçük metin/ikon çiftini yeniden
+/// çizmeli — tüm oyun masasını (ıstaka, masaya açılmış perler, sürükle-
+/// bırak hedefleri) her saniye yeniden inşa etmek gereksiz bir performans
+/// maliyetidir.
+class _TurnCountdown extends ConsumerStatefulWidget {
+  const _TurnCountdown();
+
+  @override
+  ConsumerState<_TurnCountdown> createState() => _TurnCountdownState();
+}
+
+class _TurnCountdownState extends ConsumerState<_TurnCountdown> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() {}); // yalnızca sayaç metnini yenilemek için
+      _checkTimeout();
+    });
+  }
+
+  void _checkTimeout() {
+    final gameState = ref.read(gameControllerProvider).gameState;
+    if (gameState == null) return;
+    if (gameState.activePlayer.id != kHumanPlayerId) return;
+    if (!gameState.rules.timerEnabled) return;
+    final startedAt = gameState.turnStartedAt;
+    if (startedAt == null) return;
+    if (DateTime.now().difference(startedAt) >= gameState.rules.turnDuration) {
+      ref.read(gameControllerProvider.notifier).handleTurnTimeout();
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final gameState = ref.watch(
+      gameControllerProvider.select((s) => s.gameState),
+    );
+    if (gameState == null) return const SizedBox.shrink();
+
+    final isHumanTurn = gameState.activePlayer.id == kHumanPlayerId;
+    if (!isHumanTurn || !gameState.rules.timerEnabled || gameState.turnStartedAt == null) {
+      return const SizedBox.shrink();
+    }
+
+    final elapsed = DateTime.now().difference(gameState.turnStartedAt!);
+    final remainingSeconds = (gameState.rules.turnDuration - elapsed)
+        .inSeconds
+        .clamp(0, gameState.rules.turnDuration.inSeconds);
+    final urgent = remainingSeconds <= 5;
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 12),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.timer_outlined,
+            size: 14,
+            color: urgent ? Colors.redAccent : Colors.white70,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            '${remainingSeconds}sn',
+            style: TextStyle(
+              color: urgent ? Colors.redAccent : Colors.white70,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ],
       ),
     );
