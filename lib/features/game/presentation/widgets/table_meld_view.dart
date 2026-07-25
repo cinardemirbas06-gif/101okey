@@ -4,6 +4,7 @@ import '../../domain/entities/meld.dart';
 import '../../domain/entities/meld_tile.dart';
 import '../../domain/entities/okey_tile.dart';
 import '../../domain/enums/meld_type.dart';
+import 'animation_speed.dart';
 import 'okey_tile_widget.dart';
 
 /// Masaya açılmış tek bir perin (seri/grup/çift) görünümü.
@@ -105,9 +106,14 @@ class _MeldSlot extends StatelessWidget {
       onAcceptWithDetails: (details) =>
           onDropOnJokerSlot(details.data, position),
       builder: (context, candidateData, rejectedData) {
-        final highlighted = candidateData.isNotEmpty;
+        final highlighted =
+            candidateData.isNotEmpty &&
+            GameUiPreferences.dropHighlightsEnabledOf(context);
         return AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
+          duration: GameUiPreferences.scaleOf(
+            context,
+            const Duration(milliseconds: 120),
+          ),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(tileWidth * 0.18),
             border: highlighted
@@ -138,9 +144,14 @@ class _DropZone extends StatelessWidget {
       onWillAcceptWithDetails: (_) => true,
       onAcceptWithDetails: (details) => onAccept(details.data),
       builder: (context, candidateData, rejectedData) {
-        final active = candidateData.isNotEmpty;
+        final active =
+            candidateData.isNotEmpty &&
+            GameUiPreferences.dropHighlightsEnabledOf(context);
         return AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
+          duration: GameUiPreferences.scaleOf(
+            context,
+            const Duration(milliseconds: 120),
+          ),
           width: width,
           height: height,
           decoration: BoxDecoration(

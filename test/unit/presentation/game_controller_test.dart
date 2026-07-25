@@ -5,11 +5,14 @@ import 'package:okey_101_pro/features/game/domain/enums/ai_difficulty.dart';
 import 'package:okey_101_pro/features/game/domain/enums/game_phase.dart';
 import 'package:okey_101_pro/features/game/presentation/controllers/game_controller.dart';
 
+import '../../helpers/test_storage.dart';
+
 void main() {
   group('GameController', () {
     late ProviderContainer container;
 
-    setUp(() {
+    setUp(() async {
+      await resetTestStorage();
       container = ProviderContainer(
         overrides: [
           gameControllerProvider.overrideWith(

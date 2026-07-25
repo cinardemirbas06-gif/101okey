@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../achievements/domain/achievement_definition.dart';
 import '../../domain/entities/player_hand_score.dart';
 import '../controllers/game_controller.dart';
 
@@ -55,6 +56,23 @@ class HandResultScreen extends ConsumerWidget {
                   .name,
               score: score,
             ),
+          if (session.newlyUnlockedAchievements.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(
+              'Yeni Başarımlar!',
+              style: Theme.of(context).textTheme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            for (final id in session.newlyUnlockedAchievements)
+              Card(
+                color: Colors.amber.shade50,
+                child: ListTile(
+                  leading: Icon(Icons.emoji_events, color: Colors.amber.shade700),
+                  title: Text(_achievementTitle(id)),
+                ),
+              ),
+          ],
           const SizedBox(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -72,6 +90,10 @@ class HandResultScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  String _achievementTitle(AchievementId id) {
+    return AchievementCatalog.all.firstWhere((a) => a.id == id).title;
   }
 
   String _finishTypeLabel(String raw) {

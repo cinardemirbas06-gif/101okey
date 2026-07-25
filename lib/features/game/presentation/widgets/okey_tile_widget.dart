@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/theme/tile_palette.dart';
 import '../../domain/entities/okey_tile.dart';
+import 'animation_speed.dart';
 
 /// Tek bir 101 Okey taşının görsel gösterimi.
 ///
@@ -32,6 +33,7 @@ class OkeyTileWidget extends StatelessWidget {
 
     if (faceDown) {
       return _shell(
+        context: context,
         borderRadius: borderRadius,
         elevated: false,
         child: DecoratedBox(
@@ -51,6 +53,7 @@ class OkeyTileWidget extends StatelessWidget {
       label: _semanticLabel(),
       selected: isSelected,
       child: _shell(
+        context: context,
         borderRadius: borderRadius,
         elevated: isSelected || isDragging,
         glow: isOkeyLike,
@@ -107,13 +110,14 @@ class OkeyTileWidget extends StatelessWidget {
   }
 
   Widget _shell({
+    required BuildContext context,
     required BorderRadius borderRadius,
     required bool elevated,
     required Widget child,
     bool glow = false,
   }) {
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 120),
+      duration: GameUiPreferences.scaleOf(context, const Duration(milliseconds: 120)),
       curve: Curves.easeOut,
       width: width,
       height: height,

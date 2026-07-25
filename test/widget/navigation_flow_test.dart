@@ -4,7 +4,13 @@ import 'package:okey_101_pro/app/app.dart';
 import 'package:okey_101_pro/core/random/random_provider.dart';
 import 'package:okey_101_pro/features/game/presentation/controllers/game_controller.dart';
 
+import '../helpers/test_storage.dart';
+
 void main() {
+  setUp(() async {
+    await resetTestStorage();
+  });
+
   testWidgets(
     'Ana menü -> kurulum -> oyun masası akışı çalışır',
     (tester) async {
@@ -33,7 +39,11 @@ void main() {
       for (var i = 0; i < 10; i++) {
         await tester.pump(const Duration(milliseconds: 500));
       }
-      await tester.pumpAndSettle(const Duration(milliseconds: 500));
+      // NOT: Burada pumpAndSettle KULLANILMAZ — GameTableScreen, tur
+      // süresi sayacı için her saniye tetiklenen sürekli bir
+      // Timer.periodic çalıştırır; bu, pumpAndSettle'ın hiçbir zaman
+      // "durulmuş" durumu görememesine (zaman aşımına) yol açar.
+      await tester.pump(const Duration(milliseconds: 500));
 
       // Oyun masası ekranına ulaşıldığını doğrula (üst çubuktaki el/tur
       // bilgisi her zaman görünür olmalı).

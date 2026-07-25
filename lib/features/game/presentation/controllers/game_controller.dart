@@ -4,7 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/errors/game_exceptions.dart';
 import '../../../../core/random/random_provider.dart';
+import '../../../achievements/data/achievements_repository.dart';
+import '../../../achievements/domain/achievement_evaluator.dart';
+import '../../../statistics/data/statistics_repository.dart';
+import '../../../statistics/domain/player_statistics.dart';
 import '../../domain/ai/ai_player_engine.dart';
+import '../../domain/ai/ai_visible_state_mapper.dart';
+import '../../domain/ai/discard_advisor.dart';
 import '../../domain/entities/game_rules_config.dart';
 import '../../domain/entities/game_state.dart';
 import '../../domain/entities/player.dart';
@@ -15,9 +21,11 @@ import '../../domain/enums/game_mode.dart';
 import '../../domain/enums/game_phase.dart';
 import '../../domain/rules/finish_engine.dart';
 import '../../domain/rules/meld_engine.dart';
+import '../../domain/rules/opening_score_calculator.dart';
 import '../../domain/rules/turn_engine.dart';
 import '../../domain/services/game_setup_service.dart';
 import '../../domain/services/scoring_engine.dart';
+import '../../data/game_save_repository.dart';
 import 'game_session_state.dart';
 
 /// Gerçek (insan) oyuncunun sabit kimliği. Bu uygulama şimdilik yalnızca
@@ -38,10 +46,31 @@ const List<AiPersonality> kDefaultAiPersonalities = [
 /// değiştirmez; her hamle `TurnEngine`/`MeldEngine`/`FinishEngine`
 /// üzerinden geçer ve doğrulanır. UI, yalnızca bu controller'ın
 /// metotlarını çağırır.
+///
+/// Her başarılı hamleden sonra oyun otomatik olarak kaydedilir
+/// (`GameSaveRepository`); bir el bittiğinde istatistikler ve
+/// başarımlar güncellenip kalıcı olarak saklanır.
 class GameController extends StateNotifier<GameSessionState> {
   GameController(this._random) : super(const GameSessionState());
 
   final RandomProvider _random;
+
+  /// Uygulama açılırken kaydedilmiş bir el varsa yükler.
+  ///
+  /// Kayıt bozuksa veya şema sürümü uyuşmuyorsa sessizce temizlenir
+  /// (kayıt zaten [GameSaveRepository.load] içinde silinir) ve `false`
+  /// döner; çağıran taraf bu durumda yeni bir oyun başlatmalıdır.
+  Future<bool> resumeSavedGame() async {
+    try {
+      final saved = await GameSaveRepository.load();
+      if (saved == null) return false;
+      state = GameSessionState(gameState: saved);
+      unawaited(_driveAiTurnsIfNeeded());
+      return true;
+    } on GameException {
+      return false;
+    }
+  }
 
   void startNewGame({
     required String playerName,
@@ -76,6 +105,7 @@ class GameController extends StateNotifier<GameSessionState> {
     );
 
     state = GameSessionState(gameState: newGame);
+    unawaited(GameSaveRepository.save(newGame));
     unawaited(_driveAiTurnsIfNeeded());
   }
 
@@ -136,22 +166,52 @@ class GameController extends StateNotifier<GameSessionState> {
 
   // --- İnsan hamleleri ------------------------------------------------------
 
-  Future<void> humanDrawFromDeck() =>
-      _runHumanAction((gs) => TurnEngine.drawFromDeck(gs, kHumanPlayerId, random: _random));
+  Future<void> humanDrawFromDeck() => _runHumanAction(
+    (gs) => TurnEngine.drawFromDeck(gs, kHumanPlayerId, random: _random),
+    onSuccess: (_, _) => state = state.copyWith(
+      tilesDrawnFromDeckThisHand: state.tilesDrawnFromDeckThisHand + 1,
+    ),
+  );
 
-  Future<void> humanTakeDiscard() =>
-      _runHumanAction((gs) => TurnEngine.takeDiscardedTile(gs, kHumanPlayerId));
+  Future<void> humanTakeDiscard() => _runHumanAction(
+    (gs) => TurnEngine.takeDiscardedTile(gs, kHumanPlayerId),
+    onSuccess: (_, _) => state = state.copyWith(
+      tilesTakenFromDiscardThisHand: state.tilesTakenFromDiscardThisHand + 1,
+    ),
+  );
 
   Future<void> humanOpenMelds() => _runHumanAction((gs) {
     if (state.pendingMeldGroups.isEmpty) {
-      throw const InvalidActionException('Önce en az bir per grubu hazırlamalısınız.');
+      throw const InvalidActionException(
+        'Önce en az bir per grubu hazırlamalısınız.',
+      );
     }
     return MeldEngine.openMelds(gs, kHumanPlayerId, state.pendingMeldGroups);
-  }, clearPendingGroups: true);
+  }, clearPendingGroups: true, onSuccess: (before, after) {
+    final wasOpened = before.players
+        .firstWhere((p) => p.id == kHumanPlayerId)
+        .hasOpened;
+    if (wasOpened) return;
+    final beforeMeldIds = before.tableMelds.map((m) => m.id).toSet();
+    final newOwnMelds = after.tableMelds
+        .where(
+          (m) =>
+              !beforeMeldIds.contains(m.id) &&
+              m.openedByPlayerId == kHumanPlayerId,
+        )
+        .toList();
+    if (newOwnMelds.isEmpty) return;
+    final score = OpeningScoreCalculator.calculateMeldsScore(newOwnMelds);
+    state = state.copyWith(openingScoreThisHand: score);
+  });
 
   Future<void> humanAddTileToMeld(String tileId, String meldId, int position) =>
       _runHumanAction(
-        (gs) => MeldEngine.addTileToMeld(gs, kHumanPlayerId, tileId, meldId, position),
+        (gs) =>
+            MeldEngine.addTileToMeld(gs, kHumanPlayerId, tileId, meldId, position),
+        onSuccess: (_, _) => state = state.copyWith(
+          tilesAddedToTableThisHand: state.tilesAddedToTableThisHand + 1,
+        ),
       );
 
   Future<void> humanSwapTileWithTableOkey(
@@ -174,8 +234,12 @@ class GameController extends StateNotifier<GameSessionState> {
         driveAi: false,
       );
 
-  Future<void> humanDiscard(String tileId) =>
-      _runHumanAction((gs) => TurnEngine.discardTile(gs, kHumanPlayerId, tileId));
+  Future<void> humanDiscard(String tileId) => _runHumanAction(
+    (gs) => TurnEngine.discardTile(gs, kHumanPlayerId, tileId),
+    onSuccess: (_, _) => state = state.copyWith(
+      tilesDiscardedThisHand: state.tilesDiscardedThisHand + 1,
+    ),
+  );
 
   Future<void> humanFinish(FinishType finishType) => _runHumanAction((gs) {
     return FinishEngine.finishHand(
@@ -186,12 +250,54 @@ class GameController extends StateNotifier<GameSessionState> {
     );
   }, clearPendingGroups: true);
 
+  /// Tur süresi dolduğunda çağrılır (bkz. proje gereksinimleri #35).
+  ///
+  /// Yalnızca sıra insan oyuncudaysa ve [GameRulesConfig.timerEnabled]
+  /// açıksa etkilidir: taş çekilmediyse [GameRulesConfig.autoDrawOnTimeout]
+  /// açıksa otomatik çeker; çekilmişse
+  /// [GameRulesConfig.autoDiscardLowestRiskOnTimeout] açıksa
+  /// `DiscardAdvisor`'ın önerdiği en güvenli taşı otomatik atar.
+  Future<void> handleTurnTimeout() async {
+    final current = state.gameState;
+    if (current == null) return;
+    if (current.activePlayer.id != kHumanPlayerId) return;
+    if (!current.rules.timerEnabled) return;
+    if (current.phase != GamePhase.waitingForDraw &&
+        current.phase != GamePhase.waitingForMeld) {
+      return;
+    }
+
+    if (!current.hasDrawnThisTurn) {
+      if (current.rules.autoDrawOnTimeout) {
+        await humanDrawFromDeck();
+      }
+      return;
+    }
+
+    if (current.rules.autoDiscardLowestRiskOnTimeout) {
+      final human = current.players.firstWhere((p) => p.id == kHumanPlayerId);
+      if (human.hand.isEmpty) return;
+      final visible = AiVisibleStateMapper.buildVisibleState(
+        current,
+        kHumanPlayerId,
+      );
+      final tile = DiscardAdvisor.chooseDiscard(
+        hand: human.hand,
+        visibleState: visible,
+        difficulty: AiDifficulty.medium,
+        personality: AiPersonality.cautious,
+      );
+      await humanDiscard(tile.id);
+    }
+  }
+
   // --- Dahili yardımcılar ---------------------------------------------------
 
   Future<void> _runHumanAction(
     GameState Function(GameState) action, {
     bool clearPendingGroups = false,
     bool driveAi = true,
+    void Function(GameState before, GameState after)? onSuccess,
   }) async {
     final current = state.gameState;
     if (current == null) return;
@@ -204,6 +310,8 @@ class GameController extends StateNotifier<GameSessionState> {
         pendingMeldGroups: clearPendingGroups ? const [] : state.pendingMeldGroups,
         clearError: true,
       );
+      onSuccess?.call(current, updated);
+      unawaited(GameSaveRepository.save(updated));
       _finishHandIfNeeded();
       if (driveAi) await _driveAiTurnsIfNeeded();
     } on GameException catch (e) {
@@ -236,6 +344,7 @@ class GameController extends StateNotifier<GameSessionState> {
         selectedTileIds: const {},
         pendingMeldGroups: const [],
       );
+      unawaited(GameSaveRepository.save(current));
       _finishHandIfNeeded();
     }
     if (mounted) state = state.copyWith(isAiThinking: false);
@@ -249,14 +358,90 @@ class GameController extends StateNotifier<GameSessionState> {
       return;
     }
     if (state.lastHandScore != null) return;
+
     final result = ScoringEngine.calculate(current);
+    final updatedStatistics = _applyHandToStatistics(current);
+    final unlocked = AchievementEvaluator.evaluate(
+      finishedState: current,
+      statisticsAfterHand: updatedStatistics,
+      tilesAddedToTableThisHand: state.tilesAddedToTableThisHand,
+      humanPlayerId: kHumanPlayerId,
+    );
+    final previouslyUnlocked = AchievementsRepository.loadUnlocked();
+    final newlyUnlocked = unlocked.difference(previouslyUnlocked).toList();
+    if (unlocked.isNotEmpty) {
+      unawaited(
+        AchievementsRepository.saveUnlocked({
+          ...previouslyUnlocked,
+          ...unlocked,
+        }),
+      );
+    }
+
+    unawaited(GameSaveRepository.clear());
+
     state = state.copyWith(
       gameState: current.copyWith(phase: GamePhase.finished),
       lastHandScore: result,
+      newlyUnlockedAchievements: newlyUnlocked,
     );
   }
 
+  /// Bu elin sonucunu kalıcı [PlayerStatistics]'e işler ve saklar.
+  PlayerStatistics _applyHandToStatistics(GameState finishedState) {
+    final previous = StatisticsRepository.load();
+    final humanWon = finishedState.winnerPlayerId == kHumanPlayerId;
+    final someoneWon = finishedState.winnerPlayerId != null;
+
+    final currentWinStreak = humanWon ? previous.currentWinStreak + 1 : 0;
+
+    final updated = previous.copyWith(
+      handsPlayed: previous.handsPlayed + 1,
+      handsWon: previous.handsWon + (humanWon ? 1 : 0),
+      handsLost: previous.handsLost + (someoneWon && !humanWon ? 1 : 0),
+      normalFinishCount:
+          previous.normalFinishCount +
+          (humanWon && finishedState.finishType == FinishType.normal ? 1 : 0),
+      okeyFinishCount:
+          previous.okeyFinishCount +
+          (humanWon && finishedState.finishType == FinishType.okeyFinish
+              ? 1
+              : 0),
+      pairFinishCount:
+          previous.pairFinishCount +
+          (humanWon && finishedState.finishType == FinishType.pairFinish
+              ? 1
+              : 0),
+      handFinishCount:
+          previous.handFinishCount +
+          (humanWon && finishedState.finishType == FinishType.handFinish
+              ? 1
+              : 0),
+      highestOpeningScore: state.openingScoreThisHand != null
+          ? _max(previous.highestOpeningScore, state.openingScoreThisHand!)
+          : previous.highestOpeningScore,
+      totalOpeningScore:
+          previous.totalOpeningScore + (state.openingScoreThisHand ?? 0),
+      openingCount: previous.openingCount + (state.openingScoreThisHand != null ? 1 : 0),
+      longestWinStreak: _max(previous.longestWinStreak, currentWinStreak),
+      currentWinStreak: currentWinStreak,
+      totalTilesDiscarded:
+          previous.totalTilesDiscarded + state.tilesDiscardedThisHand,
+      totalTilesDrawnFromDeck:
+          previous.totalTilesDrawnFromDeck + state.tilesDrawnFromDeckThisHand,
+      totalTilesTakenFromDiscard:
+          previous.totalTilesTakenFromDiscard +
+          state.tilesTakenFromDiscardThisHand,
+    );
+
+    unawaited(StatisticsRepository.save(updated));
+    return updated;
+  }
+
+  static int _max(int a, int b) => a > b ? a : b;
+
   void startNextHandOrReturnToMenu() {
+    unawaited(GameSaveRepository.clear());
     state = const GameSessionState();
   }
 }

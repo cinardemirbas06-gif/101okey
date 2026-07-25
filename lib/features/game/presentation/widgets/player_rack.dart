@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/entities/okey_tile.dart';
+import 'animation_speed.dart';
 import 'okey_tile_widget.dart';
 
 /// Gerçek oyuncunun iki sıralı, sürükle-bırakla yeniden sıralanabilen
@@ -108,10 +109,15 @@ class _RackRow extends StatelessWidget {
                   onReorder(_reordered(details.data.id, tile.id));
                 },
                 builder: (context, candidateData, rejectedData) {
-                  final isDropTarget = candidateData.isNotEmpty;
+                  final isDropTarget =
+                      candidateData.isNotEmpty &&
+                      GameUiPreferences.dropHighlightsEnabledOf(context);
                   return AnimatedScale(
                     scale: isDropTarget ? 1.08 : 1.0,
-                    duration: const Duration(milliseconds: 100),
+                    duration: GameUiPreferences.scaleOf(
+                      context,
+                      const Duration(milliseconds: 100),
+                    ),
                     child: Draggable<OkeyTile>(
                       data: tile,
                       feedback: Material(

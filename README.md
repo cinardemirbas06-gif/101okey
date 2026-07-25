@@ -79,8 +79,22 @@ flutter test
   `TurnEngine`/`MeldEngine`/`FinishEngine` üzerinden işler ve sıra AI'ya
   geldiğinde `AiPlayerEngine`'i otomatik olarak (gerçekçi bir "düşünme"
   gecikmesiyle) sırayla çalıştırır.
-- **Aşama 7+ ⏳** Kayıt sistemi, ayarlar, istatistikler, başarımlar
-  sonraki aşamalarda eklenecektir.
+- **Aşama 7 ✅** Kalıcılık ve oyuncu deneyimi: Hive tabanlı
+  `HiveStorageService` üzerine kurulu `GameSaveRepository` (şema sürümü
+  kontrolü ve bozuk veri durumunda güvenli temizleme ile), her hamleden
+  sonra otomatik kayıt ve ana menüde "Devam Et" ile kaldığı yerden devam
+  etme; gerçekten bağlı `AppSettings`/`SettingsRepository`/
+  `SettingsController` (dokunsal geri bildirim, animasyon hızı, geçerli
+  bırakma alanı vurgusu, el sıralama modu, sıra süresi/otomatik zaman
+  aşımı, büyük metin modu — hepsi gerçekten UI davranışını değiştirir);
+  `PlayerStatistics` ile el/galibiyet/bitiş türü/açılış puanı/galibiyet
+  serisi takibi; `AchievementEvaluator` ve 10 başarımlık katalog (ilk
+  galibiyet, yüksek açılış, bitiş türleri, galibiyet serileri, Uzman
+  AI'ı yenme, okeysiz kazanma, masaya 10 taş işleme); sıra süresi
+  dolduğunda `DiscardAdvisor` kullanılarak otomatik çekme/atma; ve
+  `TurnEngine.rearrangeHand` üzerinden gerçek "Sırala" özelliği.
+- **Aşama 8 ⏳** Ek birim/widget/entegrasyon testleri ve performans
+  optimizasyonu sonraki aşamada eklenecektir.
 
 Oyun motoru kararlı biçimde `domain/services` (taş/dağıtım), `domain/rules`
 (tur/hamle doğrulama) ve `domain/ai` (yapay zekâ) katmanlarında, UI'dan
@@ -102,3 +116,15 @@ katmanında yaşar.
 - **Çiftten açılış/bitiş için sürükle-bırak arayüzü henüz yok**: motor
   (Aşama 4) bunu tam destekler, ancak UI şu an yalnızca seri/grup
   tabanlı açılış ve normal/okeyle/elden bitişi kolayca destekliyor.
+
+### Aşama 7 kapsam notları (bilinçli basitleştirmeler)
+
+- **Ses seviyesi/tercih ayarları eklenmedi**: Aşama 6 notunda belirtildiği
+  gibi henüz bir ses motoru/varlığı olmadığından, ayarlar ekranına var
+  olmayan bir özelliği kontrol eden sahte bir ses düğmesi eklenmedi.
+- **Bulut senkronizasyonu yok**: kayıt/istatistik/başarım verileri yalnızca
+  cihaz üzerindeki Hive kutularında tutulur; bu, "tamamen offline
+  oynanabilir" hedefiyle tutarlı bilinçli bir tercihtir.
+- **Kayıt sistemi tek bir aktif oyunu destekler**: birden fazla kayıt
+  yuvası (slot) yerine tek bir "devam eden oyun" kaydı tutulur, çünkü
+  oyun kuralları tek seferde tek bir masa oturumunu varsayar.

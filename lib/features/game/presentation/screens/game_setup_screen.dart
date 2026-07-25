@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../settings/presentation/controllers/settings_controller.dart';
 import '../../domain/entities/game_rules_config.dart';
 import '../../domain/enums/ai_difficulty.dart';
 import '../controllers/game_controller.dart';
@@ -98,11 +99,18 @@ class _GameSetupScreenState extends ConsumerState<GameSetupScreen> {
               final playerName = _nameController.text.trim().isEmpty
                   ? 'Oyuncu'
                   : _nameController.text.trim();
+              final settings = ref.read(settingsControllerProvider);
+              final baseRules = _resolveRules(_rulesPreset);
               ref
                   .read(gameControllerProvider.notifier)
                   .startNewGame(
                     playerName: playerName,
-                    rules: _resolveRules(_rulesPreset),
+                    rules: baseRules.copyWith(
+                      timerEnabled: settings.turnTimerEnabled,
+                      turnDuration: Duration(
+                        seconds: settings.turnDurationSeconds,
+                      ),
+                    ),
                     aiDifficulties: [_aiLevel, _aiLevel, _aiLevel],
                   );
               context.go('/game');

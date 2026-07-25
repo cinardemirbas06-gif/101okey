@@ -1,13 +1,19 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/theme/tile_palette.dart';
+import '../../../settings/domain/app_settings.dart';
+import '../../../settings/presentation/controllers/settings_controller.dart';
 import '../../domain/entities/okey_tile.dart';
 import '../../domain/entities/player_public_state.dart';
 import '../../domain/enums/finish_type.dart';
 import '../../domain/enums/game_phase.dart';
 import '../controllers/game_controller.dart';
+import '../widgets/animation_speed.dart';
 import '../widgets/meld_staging_tray.dart';
 import '../widgets/opponent_panel.dart';
 import '../widgets/player_rack.dart';
@@ -24,10 +30,41 @@ class GameTableScreen extends ConsumerStatefulWidget {
 }
 
 class _GameTableScreenState extends ConsumerState<GameTableScreen> {
+  Timer? _turnTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _turnTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() {}); // sayaç metnini yenilemek için
+      final gameState = ref.read(gameControllerProvider).gameState;
+      if (gameState == null) return;
+      if (gameState.activePlayer.id != kHumanPlayerId) return;
+      if (!gameState.rules.timerEnabled) return;
+      final startedAt = gameState.turnStartedAt;
+      if (startedAt == null) return;
+      if (DateTime.now().difference(startedAt) >= gameState.rules.turnDuration) {
+        ref.read(gameControllerProvider.notifier).handleTurnTimeout();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _turnTimer?.cancel();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final settings = ref.watch(settingsControllerProvider);
+
     ref.listen(gameControllerProvider, (previous, next) {
       if (next.errorMessage != null && next.errorMessage != previous?.errorMessage) {
+        if (settings.hapticFeedbackEnabled) {
+          HapticFeedback.heavyImpact();
+        }
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
           ..showSnackBar(
@@ -39,6 +76,9 @@ class _GameTableScreenState extends ConsumerState<GameTableScreen> {
           );
       }
       if (next.lastHandScore != null && previous?.lastHandScore == null) {
+        if (settings.hapticFeedbackEnabled) {
+          HapticFeedback.mediumImpact();
+        }
         context.push('/result');
       }
     });
@@ -54,6 +94,16 @@ class _GameTableScreenState extends ConsumerState<GameTableScreen> {
     final human = gameState.players.firstWhere((p) => p.id == kHumanPlayerId);
     final opponents = gameState.players.where((p) => p.id != kHumanPlayerId).toList();
     final isHumanTurn = gameState.activePlayer.id == kHumanPlayerId;
+
+    int? remainingSeconds;
+    if (isHumanTurn &&
+        gameState.rules.timerEnabled &&
+        gameState.turnStartedAt != null) {
+      final elapsed = DateTime.now().difference(gameState.turnStartedAt!);
+      remainingSeconds = (gameState.rules.turnDuration - elapsed)
+          .inSeconds
+          .clamp(0, gameState.rules.turnDuration.inSeconds);
+    }
 
     final screenWidth = MediaQuery.sizeOf(context).width;
     final tileCountForSizing = human.hand.isEmpty
@@ -77,7 +127,10 @@ class _GameTableScreenState extends ConsumerState<GameTableScreen> {
         [for (final id in g) if (handById[id] != null) handById[id]!],
     ];
 
-    return Scaffold(
+    return GameUiPreferences(
+      animationsEnabled: settings.animationsEnabled,
+      dropHighlightsEnabled: settings.validDropHighlightEnabled,
+      child: Scaffold(
       backgroundColor: TilePalette.tableFeltGreen,
       body: SafeArea(
         child: Column(
@@ -87,6 +140,7 @@ class _GameTableScreenState extends ConsumerState<GameTableScreen> {
               turnNumber: gameState.turnNumber,
               lastAction: gameState.lastActionDescription,
               isAiThinking: session.isAiThinking,
+              remainingSeconds: remainingSeconds,
             ),
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
@@ -202,6 +256,11 @@ class _GameTableScreenState extends ConsumerState<GameTableScreen> {
                       session.selectedTileIds.single,
                     )
                   : null,
+              onSort: settings.handSortMode == HandSortMode.manual
+                  ? null
+                  : () => controller.humanRearrangeHand(
+                      _sortedHandOrder(human.hand, settings.handSortMode),
+                    ),
             ),
             if (stagingGroups.isNotEmpty)
               Padding(
@@ -239,9 +298,26 @@ class _GameTableScreenState extends ConsumerState<GameTableScreen> {
           ],
         ),
       ),
+      ),
     );
   }
 
+}
+
+List<String> _sortedHandOrder(List<OkeyTile> hand, HandSortMode mode) {
+  final sorted = [...hand];
+  if (mode == HandSortMode.byColor) {
+    sorted.sort((a, b) {
+      final byColor = a.color.index.compareTo(b.color.index);
+      return byColor != 0 ? byColor : a.number.compareTo(b.number);
+    });
+  } else {
+    sorted.sort((a, b) {
+      final byNumber = a.number.compareTo(b.number);
+      return byNumber != 0 ? byNumber : a.color.index.compareTo(b.color.index);
+    });
+  }
+  return sorted.map((t) => t.id).toList();
 }
 
 class _TopBar extends StatelessWidget {
@@ -250,12 +326,14 @@ class _TopBar extends StatelessWidget {
     required this.turnNumber,
     required this.lastAction,
     required this.isAiThinking,
+    required this.remainingSeconds,
   });
 
   final int handNumber;
   final int turnNumber;
   final String? lastAction;
   final bool isAiThinking;
+  final int? remainingSeconds;
 
   @override
   Widget build(BuildContext context) {
@@ -277,6 +355,23 @@ class _TopBar extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
+          if (remainingSeconds != null) ...[
+            Icon(
+              Icons.timer_outlined,
+              size: 14,
+              color: remainingSeconds! <= 5 ? Colors.redAccent : Colors.white70,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              '${remainingSeconds}sn',
+              style: TextStyle(
+                color: remainingSeconds! <= 5 ? Colors.redAccent : Colors.white70,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(width: 12),
+          ],
           if (isAiThinking) ...[
             const SizedBox(
               width: 12,
@@ -311,6 +406,7 @@ class _ActionBar extends StatelessWidget {
     required this.onFinishNormal,
     required this.onFinishHand,
     required this.onDiscardSelected,
+    required this.onSort,
   });
 
   final bool isHumanTurn;
@@ -324,6 +420,7 @@ class _ActionBar extends StatelessWidget {
   final VoidCallback onFinishNormal;
   final VoidCallback onFinishHand;
   final VoidCallback? onDiscardSelected;
+  final VoidCallback? onSort;
 
   @override
   Widget build(BuildContext context) {
@@ -365,6 +462,11 @@ class _ActionBar extends StatelessWidget {
             onPressed: canAct ? onDiscardSelected : null,
             icon: const Icon(Icons.arrow_downward, size: 16),
             label: const Text('Seçileni At'),
+          ),
+          OutlinedButton.icon(
+            onPressed: onSort,
+            icon: const Icon(Icons.sort, size: 16),
+            label: const Text('Sırala'),
           ),
         ],
       ),
