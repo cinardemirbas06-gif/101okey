@@ -134,6 +134,20 @@ geliştirildi; UI yalnızca `features/*/presentation` katmanında yaşar.
   Istaka tepsisinin köşelerine, elin sırasını renge veya sayıya göre
   önceliklendiren gerçek iki hızlı sıralama düğmesi eklendi ("Çift Diz",
   "Seri Diz").
+- **Uygulama yatay (landscape) konuma kilitlendi**: `main.dart`,
+  `SystemChrome.setPreferredOrientations` ile yalnızca yatay yönleri
+  kabul eder (mobilde geçerlidir; web'de tarayıcı kendi kurallarını
+  uygular). Bu, gerçek bir yükseklik kısıtı sorununu ortaya çıkardı:
+  önceki dikey (portrait) varsayımıyla tasarlanmış oyun masası, gerçek
+  bir telefonun yatay yüksekliğinde (ör. ~375dp) rakip panelleri ve
+  ıstaka tepsisinin üst üste binmesine yol açıyordu. Düzeltme: rakip
+  panelleri büyük dairesel avatarlardan tek satırlık kompakt haplara
+  indirildi; kural rozetleri ayrı bir satır yerine üst çubuğa
+  taşındı; taş boyutu artık yalnızca ekran genişliğine değil, ıstaka
+  tepsisine ayrılan yükseklik payına göre de sınırlandırılıyor (bkz.
+  `GameTableScreen` içindeki `tileWidthByAvailableHeight` hesaplaması)
+  — böylece geniş bir elde taşlar büyüyüp tepsiyi ekranın geri kalanının
+  üzerine taşıramaz.
 
 ### Web build'de bulunan ve düzeltilen hatalar
 

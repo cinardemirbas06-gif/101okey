@@ -64,14 +64,22 @@ class GameTableScreen extends ConsumerWidget {
     final opponents = gameState.players.where((p) => p.id != kHumanPlayerId).toList();
     final isHumanTurn = gameState.activePlayer.id == kHumanPlayerId;
 
-    final screenWidth = MediaQuery.sizeOf(context).width;
+    // Uygulama yatay (landscape) kilitlendiğinden (bkz. main.dart), genişlik
+    // bol ama yükseklik kısıtlıdır. Taş boyutu bu yüzden yalnızca genişliğe
+    // göre değil, ıstaka tepsisine ayrılan yükseklik payına göre de
+    // sınırlandırılır — aksi halde geniş bir elde taşlar, tepsiyi ekranın
+    // geri kalanının üzerine taşacak kadar büyütülebilir.
+    final screenSize = MediaQuery.sizeOf(context);
     final tileCountForSizing = human.hand.isEmpty
         ? 8
         : (human.hand.length / 2).ceil();
-    final tileWidth = ((screenWidth - 32) / (tileCountForSizing + 1)).clamp(
-      30.0,
-      58.0,
-    );
+    final tileWidthByAvailableWidth =
+        (screenSize.width - 32) / (tileCountForSizing + 1);
+    final maxRackHeight = screenSize.height * 0.34;
+    final tileWidthByAvailableHeight = (maxRackHeight - 16) / 2.15 / 1.45;
+    final tileWidth = tileWidthByAvailableWidth
+        .clamp(0.0, tileWidthByAvailableHeight)
+        .clamp(26.0, 58.0);
     final tileHeight = tileWidth * 1.45;
 
     final stagedTileIds = session.pendingMeldGroups
@@ -131,9 +139,10 @@ class GameTableScreen extends ConsumerWidget {
                   turnNumber: gameState.turnNumber,
                   lastAction: gameState.lastActionDescription,
                   isAiThinking: session.isAiThinking,
+                  ruleBadges: ruleBadges,
                 ),
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  padding: const EdgeInsets.symmetric(vertical: 3),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
@@ -151,15 +160,6 @@ class GameTableScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Wrap(
-                    alignment: WrapAlignment.center,
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: ruleBadges,
-                  ),
-                ),
                 Expanded(
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -170,7 +170,7 @@ class GameTableScreen extends ConsumerWidget {
                             children: [
                               Padding(
                                 padding: const EdgeInsets.symmetric(
-                                  vertical: 8,
+                                  vertical: 4,
                                 ),
                                 child: TableCenterPanel(
                                   drawPileCount: gameState.remainingDeckCount,
@@ -202,9 +202,9 @@ class GameTableScreen extends ConsumerWidget {
                                   horizontal: 10,
                                 ),
                                 constraints: const BoxConstraints(
-                                  minHeight: 120,
+                                  minHeight: 56,
                                 ),
-                                padding: const EdgeInsets.all(8),
+                                padding: const EdgeInsets.all(6),
                                 decoration: BoxDecoration(
                                   color: TilePalette.meldAreaBackground,
                                   borderRadius: BorderRadius.circular(10),
@@ -308,7 +308,7 @@ class GameTableScreen extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 6,
-                    vertical: 8,
+                    vertical: 4,
                   ),
                   decoration: const BoxDecoration(
                     gradient: LinearGradient(
@@ -396,18 +396,20 @@ class _TopBar extends StatelessWidget {
     required this.turnNumber,
     required this.lastAction,
     required this.isAiThinking,
+    required this.ruleBadges,
   });
 
   final int handNumber;
   final int turnNumber;
   final String? lastAction;
   final bool isAiThinking;
+  final List<Widget> ruleBadges;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       color: TilePalette.tableNavyDarkest,
       child: Row(
         children: [
@@ -423,6 +425,10 @@ class _TopBar extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
+          for (final badge in ruleBadges) ...[
+            badge,
+            const SizedBox(width: 4),
+          ],
           const _TurnCountdown(),
           if (isAiThinking) ...[
             const SizedBox(
@@ -661,7 +667,7 @@ class _RailButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.symmetric(vertical: 1.5),
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
@@ -671,16 +677,18 @@ class _RailButton extends StatelessWidget {
           ),
           foregroundColor: Colors.white,
           disabledForegroundColor: Colors.white38,
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          padding: const EdgeInsets.symmetric(vertical: 4),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(8),
           ),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 16),
-            const SizedBox(height: 2),
+            Icon(icon, size: 14),
+            const SizedBox(height: 1),
             Text(
               label,
               textAlign: TextAlign.center,
